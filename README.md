@@ -25,39 +25,38 @@
 
 See [ROADMAP.md](ROADMAP.md) for the phased plan and [docs/devops/](docs/devops/) for the DevOps guides.
 
-## Getting Started
+## Tech stack
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+Next.js (App Router) · React · TypeScript · Tailwind CSS v4 · shadcn/ui · Bun · Vitest · Playwright
 
-First, run the development server:
+## Getting started
+
+Requires [Bun](https://bun.sh) and Node.js 20.9+.
 
 ```bash
-
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+cp .env.example .env.local
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+| Command             | What it does                       |
+| ------------------- | ---------------------------------- |
+| `bun run dev`       | Start the dev server               |
+| `bun run build`     | Production build                   |
+| `bun run start`     | Serve the production build         |
+| `bun run lint`      | ESLint                             |
+| `bun run typecheck` | TypeScript type check              |
+| `bun run format`    | Format with Prettier               |
+| `bun run test`      | Unit tests (Vitest)                |
+| `bun run test:e2e`  | End-to-end tests (Playwright)      |
+| `bun run commit`    | Conventional commit via Commitizen |
 
-## Learn More
+Run `bunx playwright install chromium` once before the first E2E run.
 
-To learn more about Next.js, take a look at the following resources:
+## Contributing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) and are checked by commitlint. CI runs formatting, lint, typecheck, unit tests, build, and E2E on every pull request.

@@ -31,16 +31,16 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 
 ## Phase 0 — Foundation & first deploy (1–2 weeks) · DevOps stage 1
 
-- [ ] Switch to Bun: commit `bun.lock`, delete `package-lock.json`, update README commands
-- [ ] Replace Windows-only `clean`/`rebuild` scripts with cross-platform ones
-- [ ] Upgrade Next.js, React, TypeScript, and run the official codemods
-- [ ] Migrate Tailwind 3 → v4 and re-sync shadcn/ui components
-- [ ] Migrate ESLint to flat config; keep Prettier + Tailwind plugin
-- [ ] Upgrade husky + commitlint + commitizen
-- [ ] Replace the create-next-app page and metadata with an Invoicely landing placeholder
-- [ ] Set up Vitest and Playwright with one smoke test each
-- [ ] GitHub Actions CI: install → lint → typecheck → unit tests → build → E2E
-- [ ] Add `.env.example` and typed env validation
+- [x] Switch to Bun: commit `bun.lock`, delete `package-lock.json`, update README commands
+- [x] Replace Windows-only `clean`/`rebuild` scripts with cross-platform ones
+- [x] Upgrade to Next.js 16, React 19, TypeScript 6 (migrated by hand; too little code for codemods)
+- [x] Migrate Tailwind 3 → v4 and re-sync shadcn/ui components
+- [x] Migrate ESLint to flat config; keep Prettier + Tailwind plugin
+- [x] Upgrade husky + commitlint + commitizen
+- [x] Replace the create-next-app page and metadata with an Invoicely landing placeholder
+- [x] Set up Vitest and Playwright with one smoke test each
+- [x] GitHub Actions CI: install → lint → typecheck → unit tests → build → E2E
+- [x] Add `.env.example` and typed env validation
 - [ ] Deploy to Vercel with a Neon Postgres database (see [01-managed](docs/devops/01-managed.md))
 
 **Done when:** a PR runs green CI and merging to `main` deploys a live URL.
