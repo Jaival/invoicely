@@ -7,3 +7,7 @@ coverage
 **/.hg
 
 **/node_modules
+# Generated
+bun.lock
+.next
+next-env.d.ts
