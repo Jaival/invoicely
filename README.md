@@ -21,6 +21,10 @@
 - No accounting or design experience required
 - Track your finances and improve cash flow
 
+### Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the phased plan and [docs/devops/](docs/devops/) for the DevOps guides.
+
 ## Getting Started
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
