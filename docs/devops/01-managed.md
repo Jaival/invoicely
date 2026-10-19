@@ -43,8 +43,7 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
 ### Neon
 
 1. Sign up at [neon.tech](https://neon.tech) (GitHub login is fine) and create a project named
-   `invoicely`. Pick the region closest to Vercel's default function region (`iad1`, US East), e.g.
-   AWS `us-east-1`. Postgres 17.
+   `invoicely` in AWS `eu-central-1` (Frankfurt), Postgres 17.
 2. The project starts with a `main` branch. Create a `dev` branch from it (**Branches → New
    branch**). Use `dev` for local development; `main` is production.
 3. Copy the `dev` connection strings (**Connect**, pooled and direct) into `.env.local` as
@@ -61,8 +60,9 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
    vercel git connect
    ```
 
-   Vercel detects Next.js and `bun.lock` and runs `bun install` on its own; no `vercel.json` is
-   needed.
+   Vercel detects Next.js and `bun.lock` and runs `bun install` on its own. `vercel.json` only pins
+   functions to `fra1` (Frankfurt) so they run next to the database; keep the two regions together
+   or every query pays a cross-region round trip.
 
 3. Environment variables: none are required yet. `NEXT_PUBLIC_APP_URL` falls back to the deployment
    URL (preview) or the production domain (production), so set it only once a custom domain exists.
