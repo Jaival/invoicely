@@ -12,6 +12,7 @@ Time estimates assume **~5–10 hours/week**.
 | Framework       | Next.js (App Router), upgraded in place from 14.0.4                             |
 | Package manager | Bun                                                                             |
 | UI              | Tailwind CSS v4, shadcn/ui, next-themes                                         |
+| Brand           | "Receipt" logo; shadcn theme: Neutral (light) / Slate (dark), Emerald, radius 0 |
 | Database        | Postgres + Drizzle ORM                                                          |
 | Auth            | Better Auth (organizations plugin when teams arrive)                            |
 | Tenancy         | Solo first, schema is organization-ready from day one                           |
@@ -49,7 +50,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 
 - [x] Drizzle setup: schema folder, migrations, seed script
 - [ ] Core tables: `user`, `organization`, `member` (one auto-created org per user), `business_profile`
-- [ ] Better Auth with email/password + one OAuth provider (GitHub or Google)
+- [ ] Better Auth with email/password + Google sign-in
 - [ ] Email verification and password reset (via Resend)
 - [ ] Protected app shell: sidebar layout, settings pages
 - [ ] Business profile: name, logo upload, address, tax ID, default currency, invoice prefix
