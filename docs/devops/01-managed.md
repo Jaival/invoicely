@@ -26,25 +26,24 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
 
 ## Steps
 
-1. [ ] Create a Neon project with `main` (production) and `dev` branches
+1. [x] Create a Neon project with `main` (production) and `dev` branches
 2. [x] Add `DATABASE_URL` and the other secrets to `.env.example` (no real values) and to a typed env module
-3. [ ] Import the GitHub repo into Vercel; set the framework preset and Bun as the install command
-4. [ ] Add production and preview environment variables in Vercel
-5. [ ] Enable the Neon ↔ Vercel integration so each preview deployment gets its own database branch
+3. [x] Import the GitHub repo into Vercel; set the framework preset and Bun as the install command
+4. [x] Add production and preview environment variables in Vercel
+5. [x] Enable the Neon ↔ Vercel integration so each preview deployment gets its own database branch
 6. [x] Write `.github/workflows/ci.yml`:
    - `oven-sh/setup-bun` → `bun install --frozen-lockfile`
    - `bun run lint`, `bun run typecheck`, `bun run test`, `bun run build`
    - Playwright job against the build
 7. [ ] Run Drizzle migrations in a release step before the new build goes live (not at runtime)
-8. [ ] Protect `main`: require CI to pass and use PRs only
+8. [x] Protect `main`: require CI to pass and use PRs only
 9. [ ] Add a custom domain (optional at this stage)
 10. [ ] Connect Sentry (Phase 1) and add source map upload to the build
 
 ### Neon
 
 1. Sign up at [neon.tech](https://neon.tech) (GitHub login is fine) and create a project named
-   `invoicely`. Pick the region closest to Vercel's default function region (`iad1`, US East), e.g.
-   AWS `us-east-1`. Postgres 17.
+   `invoicely` in AWS `eu-central-1` (Frankfurt), Postgres 17.
 2. The project starts with a `main` branch. Create a `dev` branch from it (**Branches → New
    branch**). Use `dev` for local development; `main` is production.
 3. Copy the `dev` connection strings (**Connect**, pooled and direct) into `.env.local` as
@@ -61,8 +60,9 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
    vercel git connect
    ```
 
-   Vercel detects Next.js and `bun.lock` and runs `bun install` on its own; no `vercel.json` is
-   needed.
+   Vercel detects Next.js and `bun.lock` and runs `bun install` on its own. `vercel.json` only pins
+   functions to `fra1` (Frankfurt) so they run next to the database; keep the two regions together
+   or every query pays a cross-region round trip.
 
 3. Environment variables: none are required yet. `NEXT_PUBLIC_APP_URL` falls back to the deployment
    URL (preview) or the production domain (production), so set it only once a custom domain exists.
