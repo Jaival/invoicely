@@ -1,0 +1,1 @@
+ALTER TABLE "business_profile" ALTER COLUMN "id" SET DEFAULT uuidv7();

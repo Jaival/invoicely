@@ -43,7 +43,7 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
 ### Neon
 
 1. Sign up at [neon.tech](https://neon.tech) (GitHub login is fine) and create a project named
-   `invoicely` in AWS `eu-central-1` (Frankfurt), Postgres 17.
+   `invoicely` in AWS `eu-central-1` (Frankfurt), Postgres 18.
 2. The project starts with a `main` branch. Create a `dev` branch from it (**Branches → New
    branch**). Use `dev` for local development; `main` is production.
 3. Copy the `dev` connection strings (**Connect**, pooled and direct) into `.env.local` as

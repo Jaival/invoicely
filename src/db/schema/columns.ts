@@ -1,12 +1,12 @@
+import { sql } from 'drizzle-orm'
 import { timestamp, uuid } from 'drizzle-orm/pg-core'
-import { v7 as uuidv7 } from 'uuid'
 
-// Time-ordered UUIDv7 primary key. Postgres 17 has no uuidv7(), so it is
-// generated in the app; sequential inserts avoid index fragmentation.
+// Time-ordered UUIDv7 primary key (native in Postgres 18). Sequential
+// inserts avoid the index fragmentation of random UUIDv4 keys.
 export const id = () =>
   uuid()
     .primaryKey()
-    .$defaultFn(() => uuidv7())
+    .default(sql`uuidv7()`)
 
 export const timestamps = {
   createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
