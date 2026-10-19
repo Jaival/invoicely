@@ -41,7 +41,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Set up Vitest and Playwright with one smoke test each
 - [x] GitHub Actions CI: install → lint → typecheck → unit tests → build → E2E
 - [x] Add `.env.example` and typed env validation
-- [ ] Deploy to Vercel with a Neon Postgres database (see [01-managed](docs/devops/01-managed.md))
+- [x] Deploy to Vercel with a Neon Postgres database (see [01-managed](docs/devops/01-managed.md))
 
 **Done when:** a PR runs green CI and merging to `main` deploys a live URL.
 
