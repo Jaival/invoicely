@@ -12,10 +12,28 @@ concurrency:
 permissions:
   contents: read
 
+# CI-only values: a throwaway Postgres service and a dummy auth secret.
+env:
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/invoicely
+  BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
+
 jobs:
   check:
     name: Lint, typecheck, unit tests, build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: invoicely
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -29,6 +47,12 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
+      - name: Apply migrations
+        run: bun run db:migrate
+      - name: Check schema and migrations are in sync
+        run: bunx drizzle-kit check && bun run db:generate && git diff --exit-code -- drizzle
+      - name: Seed (twice, to check it is idempotent)
+        run: bun run db:seed && bun run db:seed
       - run: bun run build
       - uses: actions/upload-artifact@v7
         with:
