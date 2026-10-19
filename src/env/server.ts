@@ -5,8 +5,8 @@ import * as z from 'zod'
 // Server-only variables. Reading one from client code throws at runtime.
 export const env = createEnv({
   server: {
-    // Injected by the Neon <-> Vercel integration (one branch per preview).
-    // Pooled, for the app.
+    // Neon: production branch on Vercel Production, shared dev branch on
+    // Preview and locally. Pooled, for the app.
     DATABASE_URL: z.url(),
     // Direct, for migrations. Falls back to DATABASE_URL (e.g. local Postgres).
     DATABASE_URL_UNPOOLED: z.url().optional(),
@@ -15,6 +15,9 @@ export const env = createEnv({
     // Google sign-in. Optional until the OAuth client exists.
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
+    // Shared by production and previews so Google sign-in works on previews.
+    // Only used on Vercel. Generate with `openssl rand -base64 32`.
+    OAUTH_PROXY_SECRET: z.string().min(32).optional(),
   },
   shared: {
     NODE_ENV: z

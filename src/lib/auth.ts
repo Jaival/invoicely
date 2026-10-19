@@ -2,10 +2,23 @@ import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { env as clientEnv } from '@/env/client'
 import { env } from '@/env/server'
+import { ensurePersonalOrganization } from '@/lib/organization'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { nextCookies } from 'better-auth/next-js'
-import { organization } from 'better-auth/plugins'
+import { oAuthProxy, organization } from 'better-auth/plugins'
+
+// Preview deployments get a new URL each time, which Google won't accept as a
+// redirect URI. On Vercel, the OAuth proxy sends previews through the
+// production callback and hands the profile back to the preview.
+const productionURL = env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : undefined
+const useOAuthProxy = !!(env.VERCEL && productionURL && env.OAUTH_PROXY_SECRET)
+
+export const googleEnabled = !!(
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+)
 
 export const auth = betterAuth({
   appName: 'Invoicely',
@@ -13,16 +26,45 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   advanced: { database: { generateId: 'uuid' } },
+  // Production plus every branch and deployment URL of this project. The
+  // `-jaival-projects` scope suffix keeps other Vercel accounts' apps out.
+  // Production must trust previews for the OAuth proxy round trip.
+  trustedOrigins: env.VERCEL
+    ? [productionURL, 'https://invoicely-*-jaival-projects.vercel.app'].filter(
+        (origin) => origin !== undefined,
+      )
+    : [],
   emailAndPassword: { enabled: true },
-  socialProviders:
-    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-      ? {
-          google: {
-            clientId: env.GOOGLE_CLIENT_ID,
-            clientSecret: env.GOOGLE_CLIENT_SECRET,
-          },
-        }
-      : {},
-  // nextCookies must stay last.
-  plugins: [organization(), nextCookies()],
+  socialProviders: googleEnabled
+    ? {
+        google: {
+          clientId: env.GOOGLE_CLIENT_ID!,
+          clientSecret: env.GOOGLE_CLIENT_SECRET!,
+        },
+      }
+    : {},
+  databaseHooks: {
+    session: {
+      create: {
+        // Solo-first tenancy: every user works inside their own organization,
+        // created on first sign-in and active on every session.
+        before: async (session) => {
+          const organizationId = await ensurePersonalOrganization(
+            session.userId,
+          )
+          return { data: { ...session, activeOrganizationId: organizationId } }
+        },
+      },
+    },
+  },
+  plugins: [
+    organization(),
+    ...(useOAuthProxy
+      ? [oAuthProxy({ productionURL, secret: env.OAUTH_PROXY_SECRET })]
+      : []),
+    // nextCookies must stay last.
+    nextCookies(),
+  ],
 })
+
+export type Session = typeof auth.$Infer.Session
