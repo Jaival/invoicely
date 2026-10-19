@@ -4,7 +4,12 @@ import * as z from 'zod'
 
 // Server-only variables. Reading one from client code throws at runtime.
 export const env = createEnv({
-  server: {},
+  server: {
+    // Injected by the Neon <-> Vercel integration (one branch per preview).
+    // Optional until Drizzle lands in Phase 1, then make them required.
+    DATABASE_URL: z.url().optional(),
+    DATABASE_URL_UNPOOLED: z.url().optional(),
+  },
   shared: {
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
