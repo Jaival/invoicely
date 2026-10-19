@@ -6,9 +6,15 @@ import * as z from 'zod'
 export const env = createEnv({
   server: {
     // Injected by the Neon <-> Vercel integration (one branch per preview).
-    // Optional until Drizzle lands in Phase 1, then make them required.
-    DATABASE_URL: z.url().optional(),
+    // Pooled, for the app.
+    DATABASE_URL: z.url(),
+    // Direct, for migrations. Falls back to DATABASE_URL (e.g. local Postgres).
     DATABASE_URL_UNPOOLED: z.url().optional(),
+    // Signs sessions and tokens. Generate with `openssl rand -base64 32`.
+    BETTER_AUTH_SECRET: z.string().min(32),
+    // Google sign-in. Optional until the OAuth client exists.
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
   },
   shared: {
     NODE_ENV: z
