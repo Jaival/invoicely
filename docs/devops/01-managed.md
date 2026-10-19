@@ -26,17 +26,17 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
 
 ## Steps
 
-1. [ ] Create a Neon project with `main` (production) and `dev` branches
+1. [x] Create a Neon project with `main` (production) and `dev` branches
 2. [x] Add `DATABASE_URL` and the other secrets to `.env.example` (no real values) and to a typed env module
-3. [ ] Import the GitHub repo into Vercel; set the framework preset and Bun as the install command
-4. [ ] Add production and preview environment variables in Vercel
-5. [ ] Enable the Neon ↔ Vercel integration so each preview deployment gets its own database branch
+3. [x] Import the GitHub repo into Vercel; set the framework preset and Bun as the install command
+4. [x] Add production and preview environment variables in Vercel
+5. [x] Enable the Neon ↔ Vercel integration so each preview deployment gets its own database branch
 6. [x] Write `.github/workflows/ci.yml`:
    - `oven-sh/setup-bun` → `bun install --frozen-lockfile`
    - `bun run lint`, `bun run typecheck`, `bun run test`, `bun run build`
    - Playwright job against the build
 7. [ ] Run Drizzle migrations in a release step before the new build goes live (not at runtime)
-8. [ ] Protect `main`: require CI to pass and use PRs only
+8. [x] Protect `main`: require CI to pass and use PRs only
 9. [ ] Add a custom domain (optional at this stage)
 10. [ ] Connect Sentry (Phase 1) and add source map upload to the build
 
