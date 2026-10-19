@@ -35,7 +35,7 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
    - `oven-sh/setup-bun` → `bun install --frozen-lockfile`
    - `bun run lint`, `bun run typecheck`, `bun run test`, `bun run build`
    - Playwright job against the build
-7. [ ] Run Drizzle migrations in a release step before the new build goes live (not at runtime)
+7. [x] Run Drizzle migrations in a release step before the new build goes live (not at runtime)
 8. [x] Protect `main`: require CI to pass and use PRs only
 9. [ ] Add a custom domain (optional at this stage)
 10. [ ] Connect Sentry (Phase 1) and add source map upload to the build

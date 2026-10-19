@@ -47,7 +47,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 
 ## Phase 1 — Auth, data model & business profile (2 weeks)
 
-- [ ] Drizzle setup: schema folder, migrations, seed script
+- [x] Drizzle setup: schema folder, migrations, seed script
 - [ ] Core tables: `user`, `organization`, `member` (one auto-created org per user), `business_profile`
 - [ ] Better Auth with email/password + one OAuth provider (GitHub or Google)
 - [ ] Email verification and password reset (via Resend)
