@@ -1,5 +1,6 @@
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -12,9 +13,14 @@ export default function Home() {
         Create professional invoices in minutes, send them instantly, and get
         paid faster.
       </p>
-      <Button size="lg" disabled>
-        Coming soon
-      </Button>
+      <div className="flex gap-3">
+        <Button size="lg" asChild>
+          <Link href="/sign-up">Get started</Link>
+        </Button>
+        <Button size="lg" variant="outline" asChild>
+          <Link href="/sign-in">Sign in</Link>
+        </Button>
+      </div>
     </main>
   )
 }
