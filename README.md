@@ -42,7 +42,7 @@ bun run dev
 ```
 
 Schema changes: edit `src/db/schema`, run `bun run db:generate`, commit the new file in `drizzle/`.
-Vercel applies pending migrations before each build, so every preview migrates its own Neon branch.
+Vercel applies pending migrations before each build: production migrates the `production` Neon branch, previews migrate the shared `dev` branch.
 Keep migrations backward compatible: the previous deployment keeps serving while the new one builds.
 
 Open [http://localhost:3000](http://localhost:3000).
