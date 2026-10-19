@@ -87,6 +87,24 @@ Previews and local development share `dev`, and each preview build runs pending 
 If an abandoned PR leaves a migration behind, reset `dev` from its parent
 (**Branches → dev → Reset from parent**) and re-run `bun run db:migrate` and `bun run db:seed`.
 
+### Auth secrets and Google sign-in
+
+1. Generate a `BETTER_AUTH_SECRET` per environment (`openssl rand -base64 32`) and add it to
+   Vercel **Production** and **Preview**, and to `.env.local`.
+2. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an OAuth
+   client (**Web application**) with these **Authorized redirect URIs**:
+   - `http://localhost:3000/api/auth/callback/google`
+   - `https://<production domain>/api/auth/callback/google`
+3. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to Vercel (Production and Preview) and to
+   `.env.local`.
+4. Add one `OAUTH_PROXY_SECRET` to Vercel, the **same value** in Production and Preview.
+
+Google only accepts exact redirect URIs, and every preview has a new URL. On Vercel, Better Auth's
+OAuth proxy plugin sends a preview's Google sign-in through the production callback. Production
+encrypts the Google profile with `OAUTH_PROXY_SECRET` and redirects back to the preview, which
+creates the user and session in its own (`dev`) database. Production writes nothing. Local
+development uses its own redirect URI and skips the proxy.
+
 ### Protect `main`
 
 **Settings → Branches → Add rule** for `main`: require a pull request and require the
