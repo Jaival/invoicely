@@ -16,6 +16,9 @@ function vercelAppUrl() {
 export const env = createEnv({
   client: {
     NEXT_PUBLIC_APP_URL: z.url().default('http://localhost:3000'),
+    // Sentry, for errors, traces and replays. Public by design. Without it,
+    // Sentry is turned off.
+    NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
   },
   shared: {
     NODE_ENV: z
@@ -24,6 +27,7 @@ export const env = createEnv({
   },
   runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || vercelAppUrl(),
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NODE_ENV: process.env.NODE_ENV,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

@@ -28,6 +28,9 @@ export const env = createEnv({
     EMAIL_FROM: z.string().default('Invoicely <onboarding@resend.dev>'),
     // Tests only: write emails as JSON files here instead of sending them.
     EMAIL_OUTBOX_DIR: z.string().optional(),
+    // Sentry, build time only: uploads source maps. Without it, production
+    // stack traces stay minified.
+    SENTRY_AUTH_TOKEN: z.string().optional(),
   },
   shared: {
     NODE_ENV: z

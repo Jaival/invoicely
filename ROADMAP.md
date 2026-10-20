@@ -55,7 +55,8 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Email verification and password reset (via Resend)
 - [x] Protected app shell: sidebar layout, settings pages
 - [x] Business profile: name, logo upload, address, tax ID, default currency, invoice prefix
-- [ ] Sentry for client + server errors; structured server logging
+- [x] Sentry for client + server errors
+- [ ] Structured server logging
 - [x] E2E: sign up → verify → complete profile
 
 ## Phase 2 — Clients & invoices (3 weeks)
