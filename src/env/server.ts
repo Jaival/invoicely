@@ -21,6 +21,13 @@ export const env = createEnv({
     // Vercel Blob, for business logos. Added by connecting the Blob store to
     // the project. Without it, logo upload is turned off.
     BLOB_READ_WRITE_TOKEN: z.string().optional(),
+    // Resend, for verification and password reset emails. Without it (or an
+    // outbox), email verification and password reset are turned off.
+    RESEND_API_KEY: z.string().optional(),
+    // Sender, on a domain verified in Resend.
+    EMAIL_FROM: z.string().default('Invoicely <onboarding@resend.dev>'),
+    // Tests only: write emails as JSON files here instead of sending them.
+    EMAIL_OUTBOX_DIR: z.string().optional(),
   },
   shared: {
     NODE_ENV: z
