@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { outboxDir } from './e2e/outbox'
 
 const PORT = 3000
 const isCI = !!process.env.CI
@@ -21,5 +22,8 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !isCI,
     timeout: 120_000,
+    // Capture emails as files so tests can follow verification and reset
+    // links. A dev server you started yourself needs this set too.
+    env: { EMAIL_OUTBOX_DIR: outboxDir },
   },
 })

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # design mockups (local only)
 .mockups
+
+# emails captured by E2E tests
+.email-outbox

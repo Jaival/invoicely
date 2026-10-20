@@ -1,5 +1,5 @@
 import { AuthForm } from '@/components/auth/auth-form'
-import { googleEnabled } from '@/lib/auth'
+import { emailEnabled, googleEnabled } from '@/lib/auth'
 import { getSession } from '@/lib/session'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
@@ -16,11 +16,11 @@ const errorMessages: Record<string, string> = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string | string[] }>
+  searchParams: Promise<{ error?: string | string[]; reset?: string }>
 }) {
   if (await getSession()) redirect('/dashboard')
 
-  const { error } = await searchParams
+  const { error, reset } = await searchParams
   const initialError =
     typeof error === 'string'
       ? (errorMessages[error] ?? 'Sign-in failed. Please try again.')
@@ -30,7 +30,13 @@ export default async function SignInPage({
     <AuthForm
       mode="sign-in"
       googleEnabled={googleEnabled}
+      emailEnabled={emailEnabled}
       initialError={initialError}
+      notice={
+        reset === 'success'
+          ? 'Password updated. Sign in with your new password.'
+          : undefined
+      }
     />
   )
 }

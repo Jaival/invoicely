@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckEmail } from '@/components/auth/check-email'
 import { GoogleIcon } from '@/components/auth/google-icon'
 import { Button } from '@/components/ui/button'
 import {
@@ -42,13 +43,26 @@ const copy = {
 type AuthFormProps = {
   mode: keyof typeof copy
   googleEnabled: boolean
+  emailEnabled: boolean
   initialError?: string
+  notice?: string
 }
 
-export function AuthForm({ mode, googleEnabled, initialError }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  googleEnabled,
+  emailEnabled,
+  initialError,
+  notice,
+}: AuthFormProps) {
   const router = useRouter()
   const [pending, setPending] = useState<'email' | 'google' | null>(null)
   const [error, setError] = useState(initialError)
+  // Set once a verification link has been emailed to this address.
+  const [verifyEmail, setVerifyEmail] = useState<{
+    email: string
+    reason: 'sign-up' | 'unverified'
+  }>()
   const text = copy[mode]
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -59,17 +73,34 @@ export function AuthForm({ mode, googleEnabled, initialError }: AuthFormProps) {
 
     setPending('email')
     setError(undefined)
-    const { error } =
+    // callbackURL is where the emailed verification link lands.
+    const { data, error } =
       mode === 'sign-up'
         ? await authClient.signUp.email({
             name: String(form.get('name')),
             email,
             password,
+            callbackURL: AFTER_AUTH_URL,
           })
-        : await authClient.signIn.email({ email, password })
+        : await authClient.signIn.email({
+            email,
+            password,
+            callbackURL: AFTER_AUTH_URL,
+          })
 
+    if (error?.code === 'EMAIL_NOT_VERIFIED') {
+      setVerifyEmail({ email, reason: 'unverified' })
+      setPending(null)
+      return
+    }
     if (error) {
       setError(error.message ?? 'Something went wrong. Please try again.')
+      setPending(null)
+      return
+    }
+    // Without a session token, the account is waiting on email verification.
+    if (!data.token) {
+      setVerifyEmail({ email, reason: 'sign-up' })
       setPending(null)
       return
     }
@@ -92,6 +123,20 @@ export function AuthForm({ mode, googleEnabled, initialError }: AuthFormProps) {
     }
   }
 
+  if (verifyEmail) {
+    return (
+      <CheckEmail
+        email={verifyEmail.email}
+        description={
+          verifyEmail.reason === 'sign-up'
+            ? 'Open the link we sent to finish creating your account.'
+            : 'Confirm your email before signing in. We sent you a new link.'
+        }
+        callbackURL={AFTER_AUTH_URL}
+      />
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -101,6 +146,11 @@ export function AuthForm({ mode, googleEnabled, initialError }: AuthFormProps) {
         <CardDescription>{text.description}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
+        {notice && (
+          <p role="status" className="text-sm text-primary">
+            {notice}
+          </p>
+        )}
         {googleEnabled && (
           <>
             <Button
@@ -141,7 +191,17 @@ export function AuthForm({ mode, googleEnabled, initialError }: AuthFormProps) {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              {mode === 'sign-in' && emailEnabled && (
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <Input
               id="password"
               name="password"
