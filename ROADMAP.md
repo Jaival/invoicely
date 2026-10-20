@@ -52,7 +52,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Core tables: `user`, `organization`, `member` (one auto-created org per user), `business_profile`
 - [x] Better Auth with email/password + Google sign-in
 - [ ] Email verification and password reset (via Resend)
-- [ ] Protected app shell: sidebar layout, settings pages
+- [x] Protected app shell: sidebar layout, settings pages
 - [ ] Business profile: name, logo upload, address, tax ID, default currency, invoice prefix
 - [ ] Sentry for client + server errors; structured server logging
 - [ ] E2E: sign up → verify → complete profile
