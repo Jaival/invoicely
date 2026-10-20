@@ -2,13 +2,14 @@ import { db, type Database } from '@/db'
 import { violatesForeignKey } from '@/db/errors'
 import {
   businessProfile,
+  client,
   invoice,
   invoiceCounter,
   invoiceLine,
 } from '@/db/schema'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
 import { invoiceTotals, type Line } from '@/lib/money'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 
 // Every query takes the organization, so one business can never read or
 // change another's invoices. Callers pass the session's organization.
@@ -27,6 +28,31 @@ export type InvoiceValues = {
 }
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+
+// Newest first. Filters, search and sorting come with the invoice list.
+export async function listInvoices(organizationId: string) {
+  return db
+    .select({
+      id: invoice.id,
+      number: invoice.number,
+      status: invoice.status,
+      clientName: client.name,
+      currency: invoice.currency,
+      issueDate: invoice.issueDate,
+      dueDate: invoice.dueDate,
+      total: invoice.total,
+    })
+    .from(invoice)
+    .innerJoin(
+      client,
+      and(
+        eq(client.organizationId, invoice.organizationId),
+        eq(client.id, invoice.clientId),
+      ),
+    )
+    .where(eq(invoice.organizationId, organizationId))
+    .orderBy(desc(invoice.createdAt), desc(invoice.id))
+}
 
 export async function getInvoice(organizationId: string, id: string) {
   return db.query.invoice.findFirst({

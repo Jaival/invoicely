@@ -9,6 +9,7 @@ import {
   createInvoice,
   deleteDraft,
   getInvoice,
+  listInvoices,
   markInvoiceSent,
   updateDraft,
   type InvoiceValues,
@@ -153,6 +154,30 @@ describe('drafts', () => {
   })
 })
 
+describe('listInvoices', () => {
+  it('lists the business’s invoices, newest first, with their clients', async () => {
+    const { organizationId, clientId } = await setUp()
+    const older = await createDraft(organizationId, clientId)
+    const newer = await createDraft(organizationId, clientId)
+    await markInvoiceSent(organizationId, older)
+
+    expect(await listInvoices(organizationId)).toEqual([
+      expect.objectContaining({
+        id: newer,
+        number: null,
+        status: 'draft',
+        clientName: 'Test client',
+        total: 27420,
+      }),
+      expect.objectContaining({
+        id: older,
+        number: 'INV-0001',
+        status: 'sent',
+      }),
+    ])
+  })
+})
+
 describe('numbering', () => {
   it('numbers invoices per business when they are sent', async () => {
     const a = await setUp('ACME')
@@ -258,6 +283,7 @@ describe('privacy', () => {
     const id = await createDraft(mine.organizationId, mine.clientId)
 
     expect(await getInvoice(theirs.organizationId, id)).toBeUndefined()
+    expect(await listInvoices(theirs.organizationId)).toEqual([])
     expect(
       await updateDraft(theirs.organizationId, id, values(theirs.clientId)),
     ).toBe(false)

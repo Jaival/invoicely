@@ -14,6 +14,7 @@ describe('segmentTitle', () => {
 
   it('labels new and record pages from their collection', () => {
     expect(titles('/clients/new')).toEqual(['Clients', 'New client'])
+    expect(titles('/invoices/new')).toEqual(['Invoices', 'New invoice'])
     expect(titles('/clients/0199f6a4-7b1c-7000-8000-000000000000')).toEqual([
       'Clients',
       'Client',
