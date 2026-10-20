@@ -15,3 +15,11 @@ export async function requireSession() {
   if (!session) redirect('/sign-in')
   return session
 }
+
+// The organization the signed-in user works in. Every session gets one when
+// it's created, so a session without one is stale.
+export async function requireOrganizationId() {
+  const { session } = await requireSession()
+  if (!session.activeOrganizationId) redirect('/sign-in')
+  return session.activeOrganizationId
+}

@@ -1,5 +1,6 @@
 'use client'
 
+import { SelectField, TextField } from '@/components/form-fields'
 import {
   saveBusinessProfile,
   type BusinessProfileState,
@@ -25,19 +26,11 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   LOGO_ACCEPT,
   LOGO_MAX_BYTES,
   type BusinessProfileInput,
 } from '@/lib/business-profile'
-import { countries, currencies, type Option } from '@/lib/locale-data'
+import { countries, currencies } from '@/lib/locale-data'
 import { ImageIcon, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { useRef, useState, useTransition } from 'react'
@@ -298,79 +291,5 @@ export function BusinessProfileForm({
         </CardFooter>
       </form>
     </Card>
-  )
-}
-
-type TextFieldProps = React.ComponentProps<typeof Input> & {
-  name: string
-  label: string
-  description?: string
-  error?: string
-}
-
-function TextField({
-  name,
-  label,
-  description,
-  error,
-  ...inputProps
-}: TextFieldProps) {
-  return (
-    <Field data-invalid={error ? true : undefined}>
-      <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      <Input
-        id={name}
-        name={name}
-        aria-invalid={error ? true : undefined}
-        {...inputProps}
-      />
-      {description && <FieldDescription>{description}</FieldDescription>}
-      <FieldError>{error}</FieldError>
-    </Field>
-  )
-}
-
-type SelectFieldProps = {
-  name: string
-  label: string
-  placeholder: string
-  options: Option[]
-  defaultValue: string
-  showCode?: boolean
-  error?: string
-}
-
-function SelectField({
-  name,
-  label,
-  placeholder,
-  options,
-  defaultValue,
-  showCode,
-  error,
-}: SelectFieldProps) {
-  return (
-    <Field data-invalid={error ? true : undefined}>
-      <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      <Select name={name} defaultValue={defaultValue || undefined}>
-        <SelectTrigger
-          id={name}
-          className="w-full"
-          aria-invalid={error ? true : undefined}
-        >
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {options.map((option) => (
-              <SelectItem key={option.code} value={option.code}>
-                {showCode ? `${option.code} · ${option.name}` : option.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      <FieldError>{error}</FieldError>
-    </Field>
   )
 }

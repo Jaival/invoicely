@@ -61,7 +61,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 
 ## Phase 2 — Clients & invoices (3 weeks)
 
-- [ ] Clients CRUD (name, email, address, tax ID, notes)
+- [x] Clients CRUD (name, email, address, tax ID, notes)
 - [ ] Invoices: number sequence per org, issue/due dates, currency, notes, terms
 - [ ] Line items: description, quantity, unit price, tax %, discount
 - [x] Money utilities in minor units with full unit-test coverage (rounding, tax, discounts, totals)
