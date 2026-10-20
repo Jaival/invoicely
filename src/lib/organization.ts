@@ -2,6 +2,7 @@ import { db } from '@/db'
 import { member, organization, user } from '@/db/schema'
 import { organizationSlug } from '@/lib/slug'
 import { asc, eq } from 'drizzle-orm'
+import { cache } from 'react'
 
 // Returns the user's first organization, creating one they own if they have
 // none yet (i.e. on their first sign-in).
@@ -35,3 +36,16 @@ export async function ensurePersonalOrganization(userId: string) {
     return created.id
   })
 }
+
+// The organization the session is working in. Cached per request so the
+// layout and page can both ask for it.
+export const getActiveOrganization = cache(
+  async (organizationId: string | null | undefined) => {
+    if (!organizationId) return undefined
+    const [active] = await db
+      .select({ id: organization.id, name: organization.name })
+      .from(organization)
+      .where(eq(organization.id, organizationId))
+    return active
+  },
+)
