@@ -38,7 +38,7 @@ GitHub ── PR ──▶ GitHub Actions (lint, typecheck, test, build, E2E)
 7. [x] Run Drizzle migrations in a release step before the new build goes live (not at runtime)
 8. [x] Protect `main`: require CI to pass and use PRs only
 9. [ ] Add a custom domain (optional at this stage)
-10. [ ] Connect Sentry (Phase 1) and add source map upload to the build
+10. [x] Connect Sentry (Phase 1) and add source map upload to the build
 
 ### Neon
 
@@ -137,6 +137,22 @@ link is hidden, so an environment never ends up with accounts nobody can verify.
 
 E2E tests never call Resend. Playwright starts the server with `EMAIL_OUTBOX_DIR=.email-outbox`, which
 writes each email to a JSON file that the tests read.
+
+### Sentry
+
+1. In [Sentry](https://jaival.sentry.io) (EU region), the `invoicely` project (platform Next.js)
+   receives errors, traces and session replays from the browser, the Node.js server and the proxy.
+2. Copy its DSN (**Project Settings → Client Keys**) into `NEXT_PUBLIC_SENTRY_DSN`, in Vercel
+   **Production** and **Preview** and in `.env.local`. The DSN is public by design. Without it,
+   Sentry is off, which keeps CI and E2E runs out of the project.
+3. Create an organization token (**Settings → Auth Tokens**) and add it to Vercel **Production**
+   and **Preview** as `SENTRY_AUTH_TOKEN`. `next build` uses it to upload source maps, so
+   production stack traces point at the original TypeScript. Without it, upload is skipped.
+
+Events are tagged with the release (commit SHA) and an environment from Vercel's system variables:
+`production` or `preview`, or `local` for anything run on your machine (including local E2E runs
+against `next start`). Filter by environment in Sentry to keep local noise out. Browser events go
+through the `/monitoring` tunnel route so ad blockers don't drop them.
 
 ### Protect `main`
 
