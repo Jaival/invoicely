@@ -11,5 +11,11 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/lib/**/*.ts'],
+      // Money math must be fully covered; a gap fails the run.
+      thresholds: { 'src/lib/money.ts': { 100: true } },
+    },
   },
 })
