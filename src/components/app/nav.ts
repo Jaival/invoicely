@@ -15,6 +15,7 @@ export const segmentTitles: Record<string, string> = {
   dashboard: 'Dashboard',
   settings: 'Settings',
   profile: 'Profile',
+  business: 'Business',
   appearance: 'Appearance',
 }
 

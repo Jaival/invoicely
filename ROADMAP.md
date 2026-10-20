@@ -18,6 +18,7 @@ Time estimates assume **~5–10 hours/week**.
 | Tenancy         | Solo first, schema is organization-ready from day one                           |
 | Payments        | Stripe Connect (users' clients pay users directly)                              |
 | SaaS billing    | Freemium subscription via Stripe Billing (post-MVP)                             |
+| File storage    | Vercel Blob (business logos); S3 from the AWS stage                             |
 | Email           | Resend + React Email                                                            |
 | PDF             | `@react-pdf/renderer`                                                           |
 | Background jobs | pg-boss (queue inside Postgres)                                                 |
@@ -53,7 +54,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Better Auth with email/password + Google sign-in
 - [ ] Email verification and password reset (via Resend)
 - [x] Protected app shell: sidebar layout, settings pages
-- [ ] Business profile: name, logo upload, address, tax ID, default currency, invoice prefix
+- [x] Business profile: name, logo upload, address, tax ID, default currency, invoice prefix
 - [ ] Sentry for client + server errors; structured server logging
 - [ ] E2E: sign up → verify → complete profile
 
