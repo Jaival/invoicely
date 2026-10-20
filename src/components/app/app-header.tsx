@@ -1,6 +1,6 @@
 'use client'
 
-import { segmentTitles } from '@/components/app/nav'
+import { segmentTitle } from '@/components/app/nav'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,7 +28,7 @@ export function AppHeader() {
       <Breadcrumb>
         <BreadcrumbList>
           {segments.map((segment, index) => {
-            const title = segmentTitles[segment] ?? segment
+            const title = segmentTitle(segments, index)
             const href = `/${segments.slice(0, index + 1).join('/')}`
             const isLast = index === segments.length - 1
             return (
