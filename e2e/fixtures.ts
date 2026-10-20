@@ -1,6 +1,7 @@
 import { test as base, expect, type Page } from '@playwright/test'
+import { linkFromEmail } from './outbox'
 
-export { expect }
+export { expect, linkFromEmail }
 
 // Better Auth rate-limits sign-in, sign-up and password changes per client
 // IP (3 per 10 seconds in production builds). Locally every request shares
@@ -20,7 +21,8 @@ export const test = base.extend({
 
 export const testPassword = 'correct-horse-battery'
 
-// Signs up a fresh user through the UI and lands on the dashboard.
+// Signs up a fresh user through the UI, confirms the emailed link, and
+// lands on the dashboard.
 export async function signUp(page: Page, name = 'Grace Hopper') {
   const email = `e2e-${crypto.randomUUID()}@example.com`
   await page.goto('/sign-up')
@@ -28,6 +30,11 @@ export async function signUp(page: Page, name = 'Grace Hopper') {
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(testPassword)
   await page.getByRole('button', { name: 'Create account' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Check your email' }),
+  ).toBeVisible()
+
+  await page.goto(await linkFromEmail(email, /confirm your email/i))
   await expect(page).toHaveURL('/dashboard')
   return email
 }

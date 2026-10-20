@@ -2,7 +2,11 @@ import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { env as clientEnv } from '@/env/client'
 import { env } from '@/env/server'
+import { ResetPasswordEmail } from '@/emails/reset-password'
+import { VerifyEmail } from '@/emails/verify-email'
+import { emailEnabled, sendEmail } from '@/lib/email/send'
 import { ensurePersonalOrganization } from '@/lib/organization'
+import { waitUntil } from '@vercel/functions'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { nextCookies } from 'better-auth/next-js'
@@ -34,7 +38,38 @@ export const auth = betterAuth({
         (origin) => origin !== undefined,
       )
     : [],
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    // Only once emails can be delivered; otherwise nobody could sign up.
+    requireEmailVerification: emailEnabled,
+    revokeSessionsOnPasswordReset: true,
+    // Sent in the background so response time doesn't reveal whether the
+    // account exists.
+    sendResetPassword: async ({ user, url }) => {
+      waitUntil(
+        sendEmail({
+          to: user.email,
+          subject: 'Reset your Invoicely password',
+          react: ResetPasswordEmail({ name: user.name, url }),
+        }),
+      )
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: emailEnabled,
+    // Signing in unverified sends a fresh link.
+    sendOnSignIn: emailEnabled,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      waitUntil(
+        sendEmail({
+          to: user.email,
+          subject: 'Confirm your email for Invoicely',
+          react: VerifyEmail({ name: user.name, url }),
+        }),
+      )
+    },
+  },
   socialProviders: googleEnabled
     ? {
         google: {
@@ -66,5 +101,7 @@ export const auth = betterAuth({
     nextCookies(),
   ],
 })
+
+export { emailEnabled }
 
 export type Session = typeof auth.$Infer.Session
