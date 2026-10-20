@@ -154,6 +154,11 @@ Events are tagged with the release (commit SHA) and an environment from Vercel's
 against `next start`). Filter by environment in Sentry to keep local noise out. Browser events go
 through the `/monitoring` tunnel route so ad blockers don't drop them.
 
+Server code logs through `log` from `src/lib/logger.ts`, never `console`. Each entry goes to
+**Sentry → Explore → Logs** with its attributes, linked to the request's trace, and to Vercel's
+runtime logs as one JSON line. Pass a caught error as `error`. At error level it also opens a
+Sentry issue. Debug entries only print locally. Better Auth's own logs go through the same logger.
+
 ### Protect `main`
 
 **Settings → Branches → Add rule** for `main`: require a pull request and require the
