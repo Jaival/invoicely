@@ -10,7 +10,7 @@ export default function SettingsLayout({
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your account and preferences.
+          Manage your account, business and preferences.
         </p>
       </div>
       <div className="flex flex-col gap-6 md:flex-row md:gap-10">

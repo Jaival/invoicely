@@ -1,5 +1,5 @@
 import { db } from '@/db'
-import { member, organization, user } from '@/db/schema'
+import { businessProfile, member, organization, user } from '@/db/schema'
 import { organizationSlug } from '@/lib/slug'
 import { asc, eq } from 'drizzle-orm'
 import { cache } from 'react'
@@ -49,3 +49,12 @@ export const getActiveOrganization = cache(
     return active
   },
 )
+
+// The details printed on the organization's invoices, if it has set them up.
+export const getBusinessProfile = cache(async (organizationId: string) => {
+  const [profile] = await db
+    .select()
+    .from(businessProfile)
+    .where(eq(businessProfile.organizationId, organizationId))
+  return profile
+})

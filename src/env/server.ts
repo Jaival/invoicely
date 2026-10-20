@@ -18,6 +18,9 @@ export const env = createEnv({
     // Shared by production and previews so Google sign-in works on previews.
     // Only used on Vercel. Generate with `openssl rand -base64 32`.
     OAUTH_PROXY_SECRET: z.string().min(32).optional(),
+    // Vercel Blob, for business logos. Added by connecting the Blob store to
+    // the project. Without it, logo upload is turned off.
+    BLOB_READ_WRITE_TOKEN: z.string().optional(),
   },
   shared: {
     NODE_ENV: z
