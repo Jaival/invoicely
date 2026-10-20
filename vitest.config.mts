@@ -10,7 +10,26 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.{ts,tsx}'],
+    projects: [
+      {
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.{ts,tsx}'],
+          exclude: ['src/**/*.db.test.ts'],
+        },
+      },
+      {
+        // Runs against a real, migrated Postgres (`bun run test:db`). Each
+        // test file creates its own organizations and deletes them after.
+        test: {
+          name: 'db',
+          include: ['src/**/*.db.test.ts'],
+          setupFiles: ['./src/test/load-env.ts'],
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       include: ['src/lib/**/*.ts'],
