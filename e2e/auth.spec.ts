@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('signed-out visitors are sent from the dashboard to sign-in', async ({
   page,
@@ -26,7 +26,8 @@ test('sign up, sign out, and sign back in with email', async ({ page }) => {
   // The personal organization is created and active on the first session.
   await expect(page.getByText(`${email} · Ada Lovelace`)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.getByRole('button', { name: 'Account menu' }).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page).toHaveURL('/sign-in')
 
   await page.getByLabel('Email').fill(email)
