@@ -1,4 +1,5 @@
 import { db } from '@/db'
+import { violatesForeignKey } from '@/db/errors'
 import { client } from '@/db/schema'
 import type { ClientValues } from '@/lib/clients/schema'
 import { containsPattern } from '@/lib/search'
@@ -63,10 +64,17 @@ export async function updateClient(
   return updated.length > 0
 }
 
+// Clients with invoices can't be deleted: the invoices would lose who they
+// bill.
 export async function deleteClient(organizationId: string, id: string) {
-  const deleted = await db
-    .delete(client)
-    .where(and(eq(client.organizationId, organizationId), eq(client.id, id)))
-    .returning({ id: client.id })
-  return deleted.length > 0
+  try {
+    const deleted = await db
+      .delete(client)
+      .where(and(eq(client.organizationId, organizationId), eq(client.id, id)))
+      .returning({ id: client.id })
+    return deleted.length > 0 ? 'deleted' : 'not-found'
+  } catch (error) {
+    if (violatesForeignKey(error, 'invoice_client_fk')) return 'has-invoices'
+    throw error
+  }
 }
