@@ -49,6 +49,8 @@ jobs:
       - run: bun run test
       - name: Apply migrations
         run: bun run db:migrate
+      - name: Database tests
+        run: bun run test:db
       - name: Check schema and migrations are in sync
         run: bunx drizzle-kit check && bun run db:generate && git diff --exit-code -- drizzle
       - name: Seed (twice, to check it is idempotent)

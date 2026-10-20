@@ -48,8 +48,13 @@ export async function saveClient(
 
 export async function removeClient(id: string): Promise<ClientFormState> {
   const organizationId = await requireOrganizationId()
-  if (!isUuid(id) || !(await deleteClient(organizationId, id))) {
-    return { status: 'error', message: gone }
+  const result = isUuid(id) ? await deleteClient(organizationId, id) : undefined
+  if (result === 'has-invoices') {
+    return {
+      status: 'error',
+      message: 'This client has invoices, so it can’t be deleted.',
+    }
   }
+  if (result !== 'deleted') return { status: 'error', message: gone }
   return { status: 'success' }
 }
