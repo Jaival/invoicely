@@ -53,6 +53,7 @@ type SelectFieldProps = {
   placeholder: string
   options: Option[]
   defaultValue: string
+  onValueChange?: (value: string) => void
   showCode?: boolean
   error?: string
 }
@@ -63,13 +64,18 @@ export function SelectField({
   placeholder,
   options,
   defaultValue,
+  onValueChange,
   showCode,
   error,
 }: SelectFieldProps) {
   return (
     <Field data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      <Select name={name} defaultValue={defaultValue || undefined}>
+      <Select
+        name={name}
+        defaultValue={defaultValue || undefined}
+        onValueChange={onValueChange}
+      >
         <SelectTrigger
           id={name}
           className="w-full"

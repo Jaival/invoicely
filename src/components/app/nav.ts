@@ -1,9 +1,16 @@
-import { LayoutDashboard, Settings, Users, type LucideIcon } from 'lucide-react'
+import {
+  FileText,
+  LayoutDashboard,
+  Settings,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 
 export type NavItem = { title: string; href: string; icon: LucideIcon }
 
 export const mainNav: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { title: 'Invoices', href: '/invoices', icon: FileText },
   { title: 'Clients', href: '/clients', icon: Users },
 ]
 
@@ -14,6 +21,7 @@ export const secondaryNav: NavItem[] = [
 // Labels for each path segment, used by the header breadcrumb.
 const segmentTitles: Record<string, string> = {
   dashboard: 'Dashboard',
+  invoices: 'Invoices',
   clients: 'Clients',
   settings: 'Settings',
   profile: 'Profile',
@@ -23,6 +31,7 @@ const segmentTitles: Record<string, string> = {
 
 // Under a collection, "new" and record ids take their label from it.
 const childTitles: Record<string, { new: string; record: string }> = {
+  invoices: { new: 'New invoice', record: 'Invoice' },
   clients: { new: 'New client', record: 'Client' },
 }
 
