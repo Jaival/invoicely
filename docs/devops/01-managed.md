@@ -120,6 +120,24 @@ because it would ignore `.env.example`. All environments share the store, and fi
 organization ID (`logos/<organization id>/logo-<random>.png`). Without the token (CI, Docker
 builds), logo upload is turned off and the rest of the profile still works.
 
+### Email (Resend)
+
+Email verification and password reset send through [Resend](https://resend.com). Until
+`RESEND_API_KEY` is set, both are off. Sign-up works without verification and the "Forgot password?"
+link is hidden, so an environment never ends up with accounts nobody can verify.
+
+1. Create a Resend account and verify a sending domain you own (**Domains → Add domain**, then add
+   the DNS records it shows). `onboarding@resend.dev` only delivers to your own address, and
+   `*.vercel.app` can't be verified.
+2. Create an API key with **Sending access** and add `RESEND_API_KEY` and
+   `EMAIL_FROM` (e.g. `Invoicely <hello@yourdomain.com>`) to Vercel **Production** and **Preview**.
+   Add them to `.env.local` if you want real emails locally.
+3. Redeploy. From then on, existing unverified email/password users get a fresh link the next time
+   they sign in.
+
+E2E tests never call Resend. Playwright starts the server with `EMAIL_OUTBOX_DIR=.email-outbox`, which
+writes each email to a JSON file that the tests read.
+
 ### Protect `main`
 
 **Settings → Branches → Add rule** for `main`: require a pull request and require the

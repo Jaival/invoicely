@@ -52,11 +52,11 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Drizzle setup: schema folder, migrations, seed script
 - [x] Core tables: `user`, `organization`, `member` (one auto-created org per user), `business_profile`
 - [x] Better Auth with email/password + Google sign-in
-- [ ] Email verification and password reset (via Resend)
+- [x] Email verification and password reset (via Resend)
 - [x] Protected app shell: sidebar layout, settings pages
 - [x] Business profile: name, logo upload, address, tax ID, default currency, invoice prefix
 - [ ] Sentry for client + server errors; structured server logging
-- [ ] E2E: sign up → verify → complete profile
+- [x] E2E: sign up → verify → complete profile
 
 ## Phase 2 — Clients & invoices (3 weeks)
 
