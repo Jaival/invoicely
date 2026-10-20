@@ -105,6 +105,21 @@ encrypts the Google profile with `OAUTH_PROXY_SECRET` and redirects back to the 
 creates the user and session in its own (`dev`) database. Production writes nothing. Local
 development uses its own redirect URI and skips the proxy.
 
+### Logo storage (Vercel Blob)
+
+Business logos live in a public Vercel Blob store in `fra1`, next to the functions:
+
+```sh
+vercel blob create-store invoicely-logos --access public --region fra1 \
+  -e production -e preview -e development --yes
+```
+
+Connecting the store adds `BLOB_READ_WRITE_TOKEN` to every environment. It also pulls the
+development variables into `.env.local` and appends `.env*` to `.gitignore`. Revert that line,
+because it would ignore `.env.example`. All environments share the store, and files are keyed by
+organization ID (`logos/<organization id>/logo-<random>.png`). Without the token (CI, Docker
+builds), logo upload is turned off and the rest of the profile still works.
+
 ### Protect `main`
 
 **Settings → Branches → Add rule** for `main`: require a pull request and require the
