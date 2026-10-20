@@ -1,8 +1,9 @@
 import { relations, sql } from 'drizzle-orm'
-import { check, index, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { check, index, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 
 import { organization } from './auth'
 import { id, timestamps } from './columns'
+import { invoice } from './invoices'
 
 // Someone the organization invoices.
 export const client = pgTable(
@@ -31,13 +32,19 @@ export const client = pgTable(
       table.organizationId,
       table.name,
     ),
+    // Target of the invoice foreign key, which matches the organization too.
+    unique('client_organization_id_id_unique').on(
+      table.organizationId,
+      table.id,
+    ),
     check('client_country_iso', sql`${table.country} ~ '^[A-Z]{2}$'`),
   ],
 )
 
-export const clientRelations = relations(client, ({ one }) => ({
+export const clientRelations = relations(client, ({ one, many }) => ({
   organization: one(organization, {
     fields: [client.organizationId],
     references: [organization.id],
   }),
+  invoices: many(invoice),
 }))
