@@ -1,4 +1,5 @@
 import { env } from '@/env/server'
+import { log } from '@/lib/logger'
 import { render } from '@react-email/components'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -34,7 +35,7 @@ export async function sendEmail({ to, subject, react }: Email) {
   }
 
   if (!resend) {
-    console.warn(`Email not sent (no RESEND_API_KEY): "${subject}" to ${to}`)
+    log.warn('Email not sent: no RESEND_API_KEY', { subject })
     return
   }
 
@@ -46,6 +47,6 @@ export async function sendEmail({ to, subject, react }: Email) {
     text,
   })
   if (error) {
-    console.error(`Could not send "${subject}" to ${to}`, error)
+    log.error('Could not send email', { subject, error })
   }
 }

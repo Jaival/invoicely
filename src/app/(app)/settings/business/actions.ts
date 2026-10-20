@@ -8,6 +8,7 @@ import {
   detectLogoType,
   LOGO_MAX_BYTES,
 } from '@/lib/business-profile'
+import { log } from '@/lib/logger'
 import { getBusinessProfile } from '@/lib/organization'
 import { requireSession } from '@/lib/session'
 import { del, put } from '@vercel/blob'
@@ -86,7 +87,7 @@ export async function saveBusinessProfile(
   // Clean up the replaced logo. A failure only leaves an orphaned file.
   if (logoUrl !== undefined && previous?.logoUrl) {
     await del(previous.logoUrl).catch((error) =>
-      console.error('Could not delete old logo', error),
+      log.warn('Could not delete old logo', { organizationId, error }),
     )
   }
 

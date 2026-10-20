@@ -5,6 +5,7 @@ import { env } from '@/env/server'
 import { ResetPasswordEmail } from '@/emails/reset-password'
 import { VerifyEmail } from '@/emails/verify-email'
 import { emailEnabled, sendEmail } from '@/lib/email/send'
+import { log } from '@/lib/logger'
 import { ensurePersonalOrganization } from '@/lib/organization'
 import { waitUntil } from '@vercel/functions'
 import { betterAuth } from 'better-auth'
@@ -30,6 +31,15 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   advanced: { database: { generateId: 'uuid' } },
+  // Better Auth passes the error, if any, as an argument or under `error`.
+  logger: {
+    log: (level, message, ...args) => {
+      const error = args
+        .map((arg) => (arg instanceof Error ? arg : arg?.error))
+        .find((arg) => arg instanceof Error)
+      log[level](message, { source: 'better-auth', ...(error && { error }) })
+    },
+  },
   // Production plus every branch and deployment URL of this project. The
   // `-jaival-projects` scope suffix keeps other Vercel accounts' apps out.
   // Production must trust previews for the OAuth proxy round trip.
