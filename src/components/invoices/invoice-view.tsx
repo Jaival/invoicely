@@ -22,8 +22,8 @@ import {
 import type { PartyDetails } from '@/db/schema'
 import { formatDate, today } from '@/lib/dates'
 import type { getInvoice } from '@/lib/invoices/queries'
+import { partyLines } from '@/lib/invoices/party'
 import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
-import { countries } from '@/lib/locale-data'
 import {
   formatMoney,
   formatQuantity,
@@ -31,6 +31,7 @@ import {
   invoiceTotals,
   lineAmounts,
 } from '@/lib/money'
+import { Download } from 'lucide-react'
 import Link from 'next/link'
 
 type InvoiceViewProps = {
@@ -71,7 +72,20 @@ export function InvoiceView({ invoice, timeZone }: InvoiceViewProps) {
           </CardTitle>
           <CardDescription>{descriptions[status]}</CardDescription>
         </div>
-        <InvoiceActions id={invoice.id} status={status} today={businessToday} />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            {/* A plain link: the route answers with a file, not a page. */}
+            <a href={`/invoices/${invoice.id}/pdf`} download>
+              <Download />
+              Download PDF
+            </a>
+          </Button>
+          <InvoiceActions
+            id={invoice.id}
+            status={status}
+            today={businessToday}
+          />
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-8">
         <div className="grid gap-6 sm:grid-cols-3">
@@ -153,8 +167,6 @@ export function InvoiceView({ invoice, timeZone }: InvoiceViewProps) {
   )
 }
 
-const countryNames = new Map(countries.map(({ code, name }) => [code, name]))
-
 function Party({
   heading,
   details,
@@ -162,16 +174,7 @@ function Party({
   heading: string
   details: PartyDetails
 }) {
-  const place = [details.postalCode, details.city].filter(Boolean).join(' ')
-  const lines = [
-    details.addressLine1,
-    details.addressLine2,
-    place,
-    details.region,
-    details.country && (countryNames.get(details.country) ?? details.country),
-    details.email,
-    details.taxId && `Tax ID ${details.taxId}`,
-  ].filter(Boolean)
+  const lines = partyLines(details)
 
   return (
     <section aria-label={heading} className="text-sm">
