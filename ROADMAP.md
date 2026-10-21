@@ -89,7 +89,7 @@ The list becomes a to-do list first ("who owes me, who's late"), with the All ta
 - [x] Row "⋯" menu by status: edit, delete, copy link, mark paid, download PDF, duplicate
 - [x] Duplicate an invoice into a new draft with fresh dates
 - [x] Two-line cards instead of the table on phones
-- [ ] Numbered pages of 50, kept in the URL with search, filter and sort
+- [x] Numbered pages of 50, kept in the URL with search, filter and sort
 
 Not now: bulk selection, date and client filters (a period picker comes with CSV export).
 
