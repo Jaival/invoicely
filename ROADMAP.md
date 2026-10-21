@@ -84,8 +84,8 @@ The list becomes a to-do list first ("who owes me, who's late"), with the All ta
 
 - [x] Open tab by default (sent + overdue + drafts): overdue first, then soonest due, drafts last
 - [x] Tabs trimmed to Open · Overdue · Drafts · Paid · All (`?status=void` still works)
-- [ ] Relative due labels ("12 days overdue", "Due in 5 days", "Paid Oct 3"); Issued column on All only
-- [ ] Outstanding and overdue totals per currency on the Open tab
+- [x] Relative due labels ("12 days overdue", "Due in 5 days", "Paid Oct 3"); Issued column on All only
+- [x] Outstanding and overdue totals per currency on the Open tab
 - [ ] Row "⋯" menu by status: edit, delete, copy link, mark paid, download PDF, duplicate
 - [ ] Duplicate an invoice into a new draft with fresh dates
 - [ ] Two-line cards instead of the table on phones
