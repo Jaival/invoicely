@@ -14,6 +14,7 @@ import {
   type InvoiceStatus,
   type PartyDetails,
 } from '@/db/schema'
+import { addDays, daysBetween } from '@/lib/dates'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
 import { isPublicToken, newPublicToken } from '@/lib/invoices/public-token'
@@ -28,6 +29,7 @@ import {
   eq,
   exists,
   ilike,
+  inArray,
   ne,
   or,
   sql,
@@ -55,10 +57,14 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 export type ListFilters = {
   // Matches the number or the client's name.
   search?: string
-  status?: DisplayStatus
+  // Every status when unset.
+  statuses?: readonly DisplayStatus[]
   // Newest first when unset.
   sort?: SortKey
   dir?: SortDirection
+  // One page of the list; all of it when unset.
+  limit?: number
+  offset?: number
 }
 
 // The client's name as printed once sent; their current name for drafts.
@@ -90,7 +96,7 @@ function matching(organizationId: string, search = '') {
 export async function listInvoices(
   organizationId: string,
   today: string,
-  { search, status, sort, dir = 'desc' }: ListFilters = {},
+  { search, statuses, sort, dir = 'desc', limit, offset = 0 }: ListFilters = {},
 ) {
   // From a fixed pair of keywords, never user input.
   const direction = sql.raw(dir === 'asc' ? 'asc' : 'desc')
@@ -99,12 +105,16 @@ export async function listInvoices(
     number: [sql`${invoice.sequence} ${direction} nulls last`],
     client: [sql`lower(${clientName}) ${direction}`],
     issued: [sql`${invoice.issueDate} ${direction}`],
-    due: [sql`${invoice.dueDate} ${direction}`],
+    // Drafts aren't due until they're sent; they go last either way.
+    due: [
+      sql`${invoice.status} = 'draft'`,
+      sql`${invoice.dueDate} ${direction}`,
+    ],
     // Amounts only compare within a currency, so currencies are grouped.
     total: [asc(invoice.currency), sql`${invoice.total} ${direction}`],
   }
 
-  return db
+  const query = db
     .select({
       id: invoice.id,
       number: invoice.number,
@@ -113,21 +123,26 @@ export async function listInvoices(
       currency: invoice.currency,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
+      paidOn: invoice.paidOn,
       total: invoice.total,
+      publicToken: invoice.publicToken,
     })
     .from(invoice)
     .innerJoin(client, withClient)
     .where(
       and(
         matching(organizationId, search),
-        status ? eq(displayStatusSql(today), status) : undefined,
+        statuses ? inArray(displayStatusSql(today), statuses) : undefined,
       ),
     )
     .orderBy(
       ...(sort ? orderings[sort] : []),
       desc(invoice.createdAt),
+      // Last, so the order is total and pages never repeat or skip a row.
       desc(invoice.id),
     )
+    .$dynamic()
+  return limit === undefined ? query : query.limit(limit).offset(offset)
 }
 
 // How many invoices the search matches in each status, for the status
@@ -148,6 +163,32 @@ export async function countInvoicesByStatus(
   return Object.fromEntries(
     rows.map((row) => [row.status, row.count]),
   ) as Partial<Record<DisplayStatus, number>>
+}
+
+// What the business is owed in each currency: every sent, unpaid invoice,
+// and the overdue part of that. Amounts in different currencies are never
+// added together.
+export async function outstandingTotals(organizationId: string, today: string) {
+  const isOverdue = sql`${invoice.dueDate} < ${today}`
+  return db
+    .select({
+      currency: invoice.currency,
+      // Sums of bigints come back as numeric strings.
+      outstanding: sql`sum(${invoice.total})`.mapWith(Number),
+      overdue:
+        sql`coalesce(sum(${invoice.total}) filter (where ${isOverdue}), 0)`.mapWith(
+          Number,
+        ),
+    })
+    .from(invoice)
+    .where(
+      and(
+        eq(invoice.organizationId, organizationId),
+        eq(invoice.status, 'sent'),
+      ),
+    )
+    .groupBy(invoice.currency)
+    .orderBy(asc(invoice.currency))
 }
 
 export async function getInvoice(organizationId: string, id: string) {
@@ -187,6 +228,35 @@ export async function createInvoice(
     if (violatesForeignKey(error, 'invoice_client_fk')) return undefined
     throw error
   }
+}
+
+// Copies an invoice, in any status, into a new draft for the same client:
+// dated issueDate, and due as long after that as the original was. Returns
+// the draft's id, or undefined when there is no such invoice.
+export async function duplicateInvoice(
+  organizationId: string,
+  id: string,
+  issueDate: string,
+) {
+  const source = await getInvoice(organizationId, id)
+  if (!source) return undefined
+  return createInvoice(organizationId, {
+    clientId: source.clientId,
+    currency: source.currency,
+    issueDate,
+    dueDate: addDays(issueDate, daysBetween(source.issueDate, source.dueDate)),
+    notes: source.notes,
+    terms: source.terms,
+    lines: source.lines.map(
+      ({ description, quantity, unitPrice, taxRate, discountRate }) => ({
+        description,
+        quantity,
+        unitPrice,
+        taxRate,
+        discountRate,
+      }),
+    ),
+  })
 }
 
 // Replaces a draft's details and lines. Returns false when there is no such

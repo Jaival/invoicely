@@ -76,20 +76,20 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Public, unguessable invoice view link for clients
 - [x] React Email template: "You have a new invoice" with link + PDF attachment
 - [x] Send action marks invoice `sent` and records an activity log entry
-- [ ] Print-friendly public view
+- [x] Print-friendly public view
 
 ## Invoice list polish (after Phase 3)
 
 The list becomes a to-do list first ("who owes me, who's late"), with the All tab as the ledger.
 
-- [ ] Open tab by default (sent + overdue + drafts): overdue first, then soonest due, drafts last
-- [ ] Tabs trimmed to Open · Overdue · Drafts · Paid · All (`?status=void` still works)
-- [ ] Relative due labels ("12 days overdue", "Due in 5 days", "Paid Oct 3"); Issued column on All only
-- [ ] Outstanding and overdue totals per currency on the Open tab
-- [ ] Row "⋯" menu by status: edit, delete, copy link, mark paid, download PDF, duplicate
-- [ ] Duplicate an invoice into a new draft with fresh dates
-- [ ] Two-line cards instead of the table on phones
-- [ ] Numbered pages of 50, kept in the URL with search, filter and sort
+- [x] Open tab by default (sent + overdue + drafts): overdue first, then soonest due, drafts last
+- [x] Tabs trimmed to Open · Overdue · Drafts · Paid · All (`?status=void` still works)
+- [x] Relative due labels ("12 days overdue", "Due in 5 days", "Paid Oct 3"); Issued column on All only
+- [x] Outstanding and overdue totals per currency on the Open tab
+- [x] Row "⋯" menu by status: edit, delete, copy link, mark paid, download PDF, duplicate
+- [x] Duplicate an invoice into a new draft with fresh dates
+- [x] Two-line cards instead of the table on phones
+- [x] Numbered pages of 50, kept in the URL with search, filter and sort
 
 Not now: bulk selection, date and client filters (a period picker comes with CSV export).
 

@@ -1,3 +1,5 @@
+import { InvoiceCards } from '@/components/invoices/invoice-cards'
+import { InvoiceRowMenu } from '@/components/invoices/invoice-row-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,14 +26,23 @@ import {
 import { formatDate } from '@/lib/dates'
 import {
   listHref,
-  listStatuses,
+  listOrder,
+  listTabs,
+  PAGE_SIZE,
+  pageNumbers,
   parseListOptions,
   sortHref,
+  viewStatuses,
   type InvoiceListOptions,
+  type ListView,
   type SortKey,
 } from '@/lib/invoices/list'
-import { countInvoicesByStatus, listInvoices } from '@/lib/invoices/queries'
-import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
+import {
+  countInvoicesByStatus,
+  listInvoices,
+  outstandingTotals,
+} from '@/lib/invoices/queries'
+import { displayStatus, dueLabel } from '@/lib/invoices/status'
 import { formatMoney } from '@/lib/money'
 import { businessToday } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
@@ -40,6 +51,8 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Plus,
   Search,
@@ -50,11 +63,13 @@ import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
-const statusLabels: Record<DisplayStatus, string> = {
-  draft: 'Draft',
-  sent: 'Sent',
+const viewLabels: Record<ListView, string> = {
+  open: 'Open',
   overdue: 'Overdue',
+  draft: 'Drafts',
   paid: 'Paid',
+  all: 'All',
+  sent: 'Sent',
   void: 'Void',
 }
 
@@ -69,11 +84,26 @@ export default async function InvoicesPage({
   ])
   const options = parseListOptions(params)
   const today = await businessToday(organizationId)
-  const [invoices, counts] = await Promise.all([
-    listInvoices(organizationId, today, options),
+  const [invoices, counts, owed] = await Promise.all([
+    listInvoices(organizationId, today, {
+      search: options.search,
+      statuses: viewStatuses[options.view],
+      ...listOrder(options),
+      limit: PAGE_SIZE,
+      offset: (options.page - 1) * PAGE_SIZE,
+    }),
     countInvoicesByStatus(organizationId, today, options.search),
+    options.view === 'open' ? outstandingTotals(organizationId, today) : [],
   ])
   const matched = Object.values(counts).reduce((sum, n) => sum + n, 0)
+  const viewCount = (view: ListView) =>
+    viewStatuses[view]?.reduce(
+      (sum, status) => sum + (counts[status] ?? 0),
+      0,
+    ) ?? matched
+  // A view without a tab, reached by URL, shows as one while it's open.
+  const tabs: ListView[] = [...listTabs]
+  if (!tabs.includes(options.view)) tabs.push(options.view)
 
   const heading = (
     <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
@@ -121,8 +151,9 @@ export default async function InvoicesPage({
       {label}
     </SortableHead>
   )
-  // Small screens drop the dates, so the total and status fit.
-  const wide = 'hidden sm:table-cell'
+  // Only the ledger needs the issue date; elsewhere what matters is when
+  // it's due.
+  const showIssued = options.view === 'all'
 
   return (
     <>
@@ -144,9 +175,9 @@ export default async function InvoicesPage({
               <Search />
             </InputGroupAddon>
           </InputGroup>
-          {/* A new search keeps the status filter and sort. */}
-          {options.status && (
-            <input type="hidden" name="status" value={options.status} />
+          {/* A new search keeps the view and sort. */}
+          {options.view !== 'open' && (
+            <input type="hidden" name="status" value={options.view} />
           )}
           {options.sort && (
             <>
@@ -156,93 +187,261 @@ export default async function InvoicesPage({
           )}
         </Form>
         <nav aria-label="Filter by status" className="flex flex-wrap gap-1">
-          <StatusLink options={options} count={matched}>
-            All
-          </StatusLink>
-          {listStatuses.map((status) => (
-            <StatusLink
-              key={status}
+          {tabs.map((view) => (
+            <ViewLink
+              key={view}
               options={options}
-              status={status}
-              count={counts[status] ?? 0}
+              view={view}
+              count={viewCount(view)}
             >
-              {statusLabels[status]}
-            </StatusLink>
+              {viewLabels[view]}
+            </ViewLink>
           ))}
         </nav>
       </div>
+      {owed.length > 0 && <OwedTotals owed={owed} />}
       {invoices.length ? (
-        <div className="border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {sortable('number', 'Number')}
-                {sortable('client', 'Client')}
-                {sortable('issued', 'Issued', { className: wide })}
-                {sortable('due', 'Due', { className: wide })}
-                {sortable('total', 'Total', { align: 'right' })}
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/invoices/${invoice.id}`}
-                      className="hover:underline"
-                    >
-                      {invoice.number ?? 'Draft'}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{invoice.clientName}</TableCell>
-                  <TableCell className={cn(wide, 'text-muted-foreground')}>
-                    {formatDate(invoice.issueDate)}
-                  </TableCell>
-                  <TableCell className={cn(wide, 'text-muted-foreground')}>
-                    {formatDate(invoice.dueDate)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(invoice.total, invoice.currency)}
-                  </TableCell>
-                  <TableCell>
-                    <InvoiceStatusBadge
-                      status={displayStatus(invoice, today)}
-                    />
-                  </TableCell>
+        <>
+          <InvoiceCards
+            invoices={invoices}
+            today={today}
+            className="sm:hidden"
+          />
+          <div className="hidden border sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {sortable('number', 'Number')}
+                  {sortable('client', 'Client')}
+                  {showIssued && sortable('issued', 'Issued')}
+                  {sortable('due', 'Due')}
+                  {sortable('total', 'Total', { align: 'right' })}
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-0">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => {
+                  const status = displayStatus(invoice, today)
+                  return (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/invoices/${invoice.id}`}
+                          className="hover:underline"
+                        >
+                          {invoice.number ?? 'Draft'}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{invoice.clientName}</TableCell>
+                      {showIssued && (
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(invoice.issueDate)}
+                        </TableCell>
+                      )}
+                      <TableCell
+                        className={cn(
+                          status === 'overdue'
+                            ? 'font-medium text-destructive'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        {dueLabel(invoice, today) ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(invoice.total, invoice.currency)}
+                      </TableCell>
+                      <TableCell>
+                        <InvoiceStatusBadge status={status} />
+                      </TableCell>
+                      <TableCell className="py-0">
+                        <InvoiceRowMenu
+                          invoice={invoice}
+                          status={status}
+                          today={today}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      ) : options.page > 1 ? (
+        // Past the last page, e.g. from an old link.
+        <p className="text-muted-foreground">
+          There are no invoices on this page.{' '}
+          <Link
+            href={listHref(options, { page: 1 })}
+            className="text-foreground underline"
+          >
+            Go to the first page
+          </Link>
+        </p>
       ) : (
         <p className="text-muted-foreground">
-          No invoices match these filters.{' '}
-          <Link href="/invoices" className="text-foreground underline">
+          {options.view === 'open' && !options.search
+            ? 'Nothing open: every invoice is paid or void.'
+            : 'No invoices match these filters.'}{' '}
+          <Link
+            href="/invoices?status=all"
+            className="text-foreground underline"
+          >
             Show all invoices
           </Link>
         </p>
+      )}
+      {invoices.length > 0 && viewCount(options.view) > PAGE_SIZE && (
+        <Pages options={options} count={viewCount(options.view)} />
       )}
     </>
   )
 }
 
-function StatusLink({
+// Numbered pages of the list: where this page is in it, and links to the
+// others. On a phone, just the previous and next pages.
+function Pages({
   options,
-  status,
+  count,
+}: {
+  options: InvoiceListOptions
+  count: number
+}) {
+  const { page } = options
+  const last = Math.ceil(count / PAGE_SIZE)
+  const to = (target: number) => listHref(options, { page: target })
+
+  return (
+    <nav
+      aria-label="Pages"
+      className="flex flex-wrap items-center justify-between gap-3 text-sm"
+    >
+      <p className="text-muted-foreground tabular-nums">
+        {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of{' '}
+        {count}
+      </p>
+      <div className="flex items-center gap-1">
+        <StepLink href={page > 1 ? to(page - 1) : undefined} rel="prev">
+          <ChevronLeft />
+          Previous
+        </StepLink>
+        <div className="hidden items-center gap-1 sm:flex">
+          {pageNumbers(page, last).map((number, i) =>
+            number === 'gap' ? (
+              <span key={`gap-${i}`} aria-hidden className="px-1">
+                …
+              </span>
+            ) : (
+              <Button
+                key={number}
+                variant={number === page ? 'secondary' : 'ghost'}
+                size="sm"
+                className="min-w-8 tabular-nums"
+                asChild
+              >
+                <Link
+                  href={to(number)}
+                  aria-label={`Page ${number}`}
+                  aria-current={number === page ? 'page' : undefined}
+                >
+                  {number}
+                </Link>
+              </Button>
+            ),
+          )}
+        </div>
+        <StepLink href={page < last ? to(page + 1) : undefined} rel="next">
+          Next
+          <ChevronRight />
+        </StepLink>
+      </div>
+    </nav>
+  )
+}
+
+// Previous or Next; disabled at either end.
+function StepLink({
+  href,
+  rel,
+  children,
+}: {
+  href?: string
+  rel: 'prev' | 'next'
+  children: React.ReactNode
+}) {
+  if (!href) {
+    return (
+      <Button variant="ghost" size="sm" disabled>
+        {children}
+      </Button>
+    )
+  }
+  return (
+    <Button variant="ghost" size="sm" asChild>
+      <Link href={href} rel={rel}>
+        {children}
+      </Link>
+    </Button>
+  )
+}
+
+// What the business is owed, per currency: everything sent and unpaid, and
+// how much of it is overdue.
+function OwedTotals({
+  owed,
+}: {
+  owed: Awaited<ReturnType<typeof outstandingTotals>>
+}) {
+  const overdue = owed.filter((row) => row.overdue > 0)
+  const amounts = (rows: typeof owed, key: 'outstanding' | 'overdue') =>
+    rows.map((row) => (
+      <span key={row.currency} className="block">
+        {formatMoney(row[key], row.currency)}
+      </span>
+    ))
+
+  return (
+    <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
+      <div className="border p-4">
+        <dt className="text-sm text-muted-foreground">Outstanding</dt>
+        <dd className="mt-1 text-xl font-semibold tabular-nums">
+          {amounts(owed, 'outstanding')}
+        </dd>
+      </div>
+      <div className="border p-4">
+        <dt className="text-sm text-muted-foreground">Overdue</dt>
+        <dd
+          className={cn(
+            'mt-1 text-xl font-semibold tabular-nums',
+            overdue.length > 0 && 'text-destructive',
+          )}
+        >
+          {overdue.length > 0 ? amounts(overdue, 'overdue') : 'Nothing'}
+        </dd>
+      </div>
+    </dl>
+  )
+}
+
+function ViewLink({
+  options,
+  view,
   count,
   children,
 }: {
   options: InvoiceListOptions
-  status?: DisplayStatus
+  view: ListView
   count: number
   children: React.ReactNode
 }) {
-  const current = options.status === status
+  const current = options.view === view
   return (
     <Button variant={current ? 'secondary' : 'ghost'} size="sm" asChild>
       <Link
-        href={listHref(options, { status })}
+        href={listHref(options, { view })}
         aria-current={current ? 'true' : undefined}
       >
         {children}
@@ -267,7 +466,8 @@ function SortableHead({
   className?: string
   children: React.ReactNode
 }) {
-  const sorted = options.sort === sortKey ? options.dir : undefined
+  const order = listOrder(options)
+  const sorted = order.sort === sortKey ? order.dir : undefined
   const Icon = !sorted ? ArrowUpDown : sorted === 'asc' ? ArrowUp : ArrowDown
   return (
     <TableHead

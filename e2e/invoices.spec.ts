@@ -207,7 +207,8 @@ test('send an invoice, record its payment, then void it', async ({ page }) => {
     page.getByRole('region', { name: 'Activity' }).getByRole('listitem'),
   ).toContainText(['Sent', 'Marked paid, received', 'Marked unpaid', 'Voided'])
 
-  await page.goto('/invoices')
+  // Void invoices aren't open; the All tab still lists them.
+  await page.goto('/invoices?status=all')
   const row = page.getByRole('row', { name: /INV-0001/ })
   await expect(row).toContainText('Babbage & Co')
   await expect(row).toContainText('Void')
@@ -256,12 +257,38 @@ test('search, filter and sort the invoice list', async ({ page }) => {
   const rows = page.getByRole('row').filter({ has: page.getByRole('cell') })
   await expect(rows).toHaveCount(3)
 
-  // The status filter shows how many invoices each status has.
+  // Open is the default, with how many invoices each tab has: overdue
+  // first, then soonest due, drafts last.
   const filters = page.getByRole('navigation', { name: 'Filter by status' })
-  await expect(filters.getByRole('link', { name: 'All 3' })).toHaveAttribute(
+  await expect(filters.getByRole('link', { name: 'Open 3' })).toHaveAttribute(
     'aria-current',
     'true',
   )
+  await expect(page.getByRole('columnheader', { name: 'Due' })).toHaveAttribute(
+    'aria-sort',
+    'ascending',
+  )
+  await expect(rows.nth(0)).toContainText('INV-0002')
+  await expect(rows.nth(1)).toContainText('INV-0001')
+  await expect(rows.nth(2)).toContainText('Draft')
+
+  // When each is due, in words, and what's owed in total.
+  await expect(rows.nth(0)).toContainText(/\d+ days overdue/)
+  await expect(rows.nth(1)).toContainText('Due in 30 days')
+  const owed = (term: string) =>
+    page.locator('dt', { hasText: term }).locator('..')
+  await expect(owed('Outstanding')).toContainText('$400.00')
+  await expect(owed('Overdue')).toContainText('$300.00')
+  // The issue date is for the ledger, on All only.
+  await expect(page.getByRole('columnheader', { name: 'Issued' })).toBeHidden()
+  await expect(filters.getByRole('link')).toHaveText([
+    'Open3',
+    'Overdue1',
+    'Drafts1',
+    'Paid0',
+    'All3',
+  ])
+
   await filters.getByRole('link', { name: 'Overdue 1' }).click()
   await expect(page).toHaveURL('/invoices?status=overdue')
   await expect(rows).toHaveCount(1)
@@ -274,12 +301,13 @@ test('search, filter and sort the invoice list', async ({ page }) => {
   await expect(page.getByText('No invoices match these filters.')).toBeVisible()
   await expect(filters.getByRole('link', { name: 'All 1' })).toBeVisible()
   await filters.getByRole('link', { name: 'All 1' }).click()
-  await expect(page).toHaveURL('/invoices?q=ada')
+  await expect(page).toHaveURL('/invoices?q=ada&status=all')
   await expect(rows).toHaveCount(1)
   await expect(rows).toContainText('Ada Analytics')
 
   // Sorting: largest total first, then the other way.
-  await page.goto('/invoices')
+  await page.goto('/invoices?status=all')
+  await expect(page.getByRole('columnheader', { name: 'Issued' })).toBeVisible()
   const total = page.getByRole('columnheader', { name: 'Total' })
   await total.getByRole('link').click()
   await expect(total).toHaveAttribute('aria-sort', 'descending')
@@ -294,6 +322,104 @@ test('search, filter and sort the invoice list', async ({ page }) => {
     .click()
   await expect(rows.first()).toContainText('INV-0002')
   await expect(rows.last()).toContainText('Draft')
+
+  // Pages of 50: one page needs no page links, and a page past the end
+  // points back to the first.
+  await expect(page.getByRole('navigation', { name: 'Pages' })).toBeHidden()
+  await page.goto('/invoices?status=all&page=2')
+  await page.getByRole('link', { name: 'Go to the first page' }).click()
+  await expect(page).toHaveURL('/invoices?status=all')
+  await expect(rows).toHaveCount(3)
+})
+
+test('act on invoices from the list', async ({ page }) => {
+  await signUp(page)
+  await addClient(page, 'Babbage & Co')
+  await page.goto('/invoices/new')
+  await fillLine(page, 1, {
+    description: 'Audit',
+    quantity: '1',
+    unitPrice: '50',
+  })
+  await page.getByRole('button', { name: 'Mark as sent' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Mark as sent' })
+    .click()
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'INV-0001' }),
+  ).toBeVisible()
+
+  // Paid from its row; it leaves the Open tab.
+  await page.goto('/invoices')
+  await page.getByRole('button', { name: 'Actions for INV-0001' }).click()
+  await page.getByRole('menuitem', { name: 'Mark as paid…' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Mark as paid' })
+    .click()
+  await expect(page.getByText('Marked as paid')).toBeVisible()
+  await expect(
+    page.getByText('Nothing open: every invoice is paid or void.'),
+  ).toBeVisible()
+
+  // Duplicated into a new draft, ready to edit.
+  await page.goto('/invoices?status=paid')
+  await page.getByRole('button', { name: 'Actions for INV-0001' }).click()
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+  await expect(page.getByText('Duplicated as a new draft')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible()
+  await expect(line(page, 1).getByLabel('Description')).toHaveValue('Audit')
+
+  // Deleted from its row.
+  await page.goto('/invoices')
+  await page
+    .getByRole('button', { name: 'Actions for the draft for Babbage & Co' })
+    .click()
+  await page.getByRole('menuitem', { name: 'Delete…' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete draft' })
+    .click()
+  await expect(page.getByText('Draft deleted')).toBeVisible()
+  await expect(
+    page.getByText('Nothing open: every invoice is paid or void.'),
+  ).toBeVisible()
+})
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('the list shows a card per invoice', async ({ page }) => {
+    await signUp(page)
+    await addClient(page, 'Babbage & Co')
+    await page.goto('/invoices/new')
+    await fillLine(page, 1, {
+      description: 'Audit',
+      quantity: '1',
+      unitPrice: '50',
+    })
+    await page.getByRole('button', { name: 'Save draft' }).click()
+    await expect(page).toHaveURL('/invoices')
+
+    await expect(page.getByRole('table')).toBeHidden()
+    const card = page
+      .getByRole('list', { name: 'Invoices' })
+      .getByRole('listitem')
+    await expect(card).toHaveCount(1)
+    await expect(card).toContainText('Babbage & Co')
+    await expect(card).toContainText('$50.00')
+    await expect(card).toContainText(/Draft · Due/)
+    await expect(
+      card.getByRole('button', {
+        name: 'Actions for the draft for Babbage & Co',
+      }),
+    ).toBeVisible()
+
+    // The whole card opens the invoice.
+    await card.getByRole('link', { name: 'Babbage & Co' }).click()
+    await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible()
+  })
 })
 
 test.describe('in Tokyo', () => {
@@ -397,6 +523,20 @@ test('sending emails the client a link they can open signed out', async ({
   await expect(client.getByRole('region', { name: 'Bill to' })).toContainText(
     'Lovelace Ltd',
   )
+
+  // Printed, it's just the invoice, in black on white even in dark mode.
+  const print = client.getByRole('button', { name: 'Print' })
+  const background = () =>
+    client.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  await expect(print).toBeVisible()
+  const onScreen = await background()
+  await client.emulateMedia({ media: 'print', colorScheme: 'dark' })
+  await expect(print).toBeHidden()
+  await expect(client.getByText('Sent with Invoicely')).toBeHidden()
+  await expect(client.locator('html')).toHaveCSS('color-scheme', 'light')
+  expect(await background()).not.toBe(onScreen)
+  await client.emulateMedia({ media: 'screen' })
+
   const pdf = await client.request.get(`${link}/pdf`)
   expect(pdf.headers()['content-type']).toBe('application/pdf')
   await context.close()

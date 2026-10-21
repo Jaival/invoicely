@@ -1,8 +1,8 @@
 import { renderInvoicePdf } from '@/components/invoices/invoice-pdf'
 import { NewInvoiceEmail } from '@/emails/new-invoice'
-import { env } from '@/env/client'
 import { emailEnabled, sendEmail } from '@/lib/email/send'
 import { formatDate } from '@/lib/dates'
+import { publicInvoiceUrl } from '@/lib/invoices/links'
 import type { getInvoice } from '@/lib/invoices/queries'
 import { log } from '@/lib/logger'
 import { formatMoney } from '@/lib/money'
@@ -32,9 +32,7 @@ export async function emailInvoice(invoice: SentInvoice) {
           number={invoice.number}
           amount={formatMoney(invoice.total, invoice.currency)}
           dueDate={formatDate(invoice.dueDate)}
-          url={
-            new URL(`/i/${invoice.publicToken}`, env.NEXT_PUBLIC_APP_URL).href
-          }
+          url={publicInvoiceUrl(invoice.publicToken)}
         />
       ),
       attachments: [

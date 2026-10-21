@@ -168,6 +168,12 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       ),
     ).toEqual({})
   },
+  async outstandingTotals() {
+    // Only their own sent invoice, not mine too.
+    expect(
+      await invoices.outstandingTotals(theirs.organizationId, TODAY),
+    ).toEqual([{ currency: 'EUR', outstanding: 10000, overdue: 0 }])
+  },
   async getInvoice() {
     for (const id of [mine.draftId, mine.sentId, mine.paidId]) {
       expect(
@@ -199,6 +205,15 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       await invoices.createInvoice(
         mine.organizationId,
         invoiceValues(theirs.clientId),
+      ),
+    ).toBeUndefined()
+  },
+  async duplicateInvoice() {
+    expect(
+      await invoices.duplicateInvoice(
+        theirs.organizationId,
+        mine.sentId,
+        TODAY,
       ),
     ).toBeUndefined()
   },

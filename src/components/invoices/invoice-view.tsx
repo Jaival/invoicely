@@ -1,5 +1,8 @@
 import { CopyLinkButton } from '@/components/invoices/copy-link-button'
-import { InvoiceActions } from '@/components/invoices/invoice-actions'
+import {
+  DuplicateButton,
+  InvoiceActions,
+} from '@/components/invoices/invoice-actions'
 import { InvoiceActivity } from '@/components/invoices/invoice-activity'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { InvoiceTotalsList } from '@/components/invoices/invoice-totals'
@@ -22,9 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { PartyDetails } from '@/db/schema'
-import { env } from '@/env/client'
 import { formatDate, today } from '@/lib/dates'
 import type { getInvoice, listInvoiceEvents } from '@/lib/invoices/queries'
+import { publicInvoiceUrl } from '@/lib/invoices/links'
 import { partyLines } from '@/lib/invoices/party'
 import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
 import {
@@ -75,12 +78,7 @@ export function InvoiceView({
         </div>
         <div className="flex flex-wrap gap-2">
           {invoice.publicToken && (
-            <CopyLinkButton
-              url={
-                new URL(`/i/${invoice.publicToken}`, env.NEXT_PUBLIC_APP_URL)
-                  .href
-              }
-            />
+            <CopyLinkButton url={publicInvoiceUrl(invoice.publicToken)} />
           )}
           <Button variant="outline" asChild>
             {/* A plain link: the route answers with a file, not a page. */}
@@ -89,6 +87,7 @@ export function InvoiceView({
               Download PDF
             </a>
           </Button>
+          <DuplicateButton id={invoice.id} />
           <InvoiceActions
             id={invoice.id}
             status={status}
@@ -145,7 +144,8 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
           ))}
         </dl>
       </div>
-      <div className="border">
+      {/* No frame on paper, where it would run on past a page break. */}
+      <div className="border print:border-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -159,7 +159,7 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
           </TableHeader>
           <TableBody>
             {invoice.lines.map((line) => (
-              <TableRow key={line.id}>
+              <TableRow key={line.id} className="break-inside-avoid">
                 <TableCell className="whitespace-normal">
                   {line.description}
                 </TableCell>
@@ -224,7 +224,7 @@ function Party({
 
 function Note({ heading, text }: { heading: string; text: string }) {
   return (
-    <section>
+    <section className="break-inside-avoid">
       <h2 className="mb-1 text-muted-foreground">{heading}</h2>
       <p className="whitespace-pre-line">{text}</p>
     </section>

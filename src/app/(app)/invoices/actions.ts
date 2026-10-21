@@ -3,6 +3,7 @@
 import {
   createInvoice,
   deleteDraft,
+  duplicateInvoice,
   getInvoice,
   markInvoicePaid,
   markInvoiceSent,
@@ -65,6 +66,24 @@ export async function sendInvoice(
   const emailedTo = sent && (await emailInvoice(sent))
   if (emailedTo) await recordInvoiceEmailed(organizationId, saved.id, emailedTo)
   return { status: 'success', id: saved.id, number, emailedTo }
+}
+
+// Copies an invoice into a new draft dated today.
+export async function duplicate(
+  id: string,
+): Promise<InvoiceFormState & { id?: string }> {
+  const organizationId = await requireOrganizationId()
+  const created =
+    isUuid(id) &&
+    (await duplicateInvoice(
+      organizationId,
+      id,
+      await businessToday(organizationId),
+    ))
+  if (!created) {
+    return { status: 'error', message: 'This invoice no longer exists.' }
+  }
+  return { status: 'success', id: created }
 }
 
 export async function removeDraft(id: string): Promise<InvoiceFormState> {

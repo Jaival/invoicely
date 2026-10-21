@@ -12,11 +12,13 @@ import {
   countInvoicesByStatus,
   createInvoice,
   deleteDraft,
+  duplicateInvoice,
   getInvoice,
   getPublicInvoice,
   listInvoiceEvents,
   listInvoices,
   markInvoicePaid,
+  outstandingTotals,
   markInvoiceSent,
   markInvoiceUnpaid,
   recordInvoiceEmailed,
@@ -245,7 +247,7 @@ describe('listInvoices', () => {
   it('filters by status, working out overdue from the business’s today', async () => {
     const all = await oneOfEach()
     const list = (status: DisplayStatus, today = TODAY) =>
-      listInvoices(all.organizationId, today, { status }).then(ids)
+      listInvoices(all.organizationId, today, { statuses: [status] }).then(ids)
 
     expect(await list('draft')).toEqual([all.draft])
     expect(await list('sent')).toEqual([all.sent])
@@ -255,6 +257,31 @@ describe('listInvoices', () => {
     // Before its due date, the overdue one was just sent.
     expect(await list('sent', '2026-10-05')).toEqual([all.overdue, all.sent])
     expect(await list('overdue', '2026-10-05')).toEqual([])
+  })
+
+  it('lists a page at a time', async () => {
+    const all = await oneOfEach()
+    const page = (offset: number) =>
+      listInvoices(all.organizationId, TODAY, {
+        sort: 'number',
+        dir: 'asc',
+        limit: 2,
+        offset,
+      }).then(ids)
+
+    expect(await page(0)).toEqual([all.sent, all.overdue])
+    expect(await page(2)).toEqual([all.paid, all.voided])
+    expect(await page(4)).toEqual([all.draft])
+    expect(await page(6)).toEqual([])
+  })
+
+  it('filters by several statuses at once', async () => {
+    const all = await oneOfEach()
+    expect(
+      await listInvoices(all.organizationId, TODAY, {
+        statuses: ['draft', 'sent', 'overdue'],
+      }).then(ids),
+    ).toEqual([all.draft, all.overdue, all.sent])
   })
 
   it('searches numbers and client names, ignoring case', async () => {
@@ -279,7 +306,7 @@ describe('listInvoices', () => {
     expect(
       await listInvoices(all.organizationId, TODAY, {
         search: 'babbage',
-        status: 'overdue',
+        statuses: ['overdue'],
       }).then(ids),
     ).toEqual([all.overdue])
   })
@@ -320,12 +347,42 @@ describe('listInvoices', () => {
       all.sent,
       all.paid,
     ])
+    // Drafts aren't due yet, so they come last either way.
     expect(await sorted('due', 'asc')).toEqual([
       all.overdue,
-      all.draft,
       all.voided,
       all.paid,
       all.sent,
+      all.draft,
+    ])
+    expect(await sorted('due', 'desc')).toEqual([
+      all.voided,
+      all.paid,
+      all.sent,
+      all.overdue,
+      all.draft,
+    ])
+  })
+
+  it('adds up what’s owed and overdue in each currency', async () => {
+    const all = await oneOfEach()
+    // The sent and overdue invoices; not the paid, void or draft ones.
+    expect(await outstandingTotals(all.organizationId, TODAY)).toEqual([
+      { currency: 'EUR', outstanding: 40000, overdue: 30000 },
+    ])
+
+    const usd = await createInvoice(all.organizationId, {
+      ...values(await createClient(all.organizationId)),
+      currency: 'USD',
+    })
+    await markInvoiceSent(all.organizationId, usd!)
+    expect(await outstandingTotals(all.organizationId, TODAY)).toEqual([
+      { currency: 'EUR', outstanding: 40000, overdue: 30000 },
+      { currency: 'USD', outstanding: 27420, overdue: 0 },
+    ])
+    expect(await outstandingTotals(all.organizationId, '2026-10-05')).toEqual([
+      { currency: 'EUR', outstanding: 40000, overdue: 0 },
+      { currency: 'USD', outstanding: 27420, overdue: 0 },
     ])
   })
 
@@ -608,5 +665,46 @@ describe('activity', () => {
     expect(await logged(organizationId, id)).toEqual([
       { type: 'sent', data: null },
     ])
+  })
+})
+
+describe('duplicating', () => {
+  it('copies an invoice into a new draft with fresh dates', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createDraft(organizationId, clientId)
+    await markInvoiceSent(organizationId, id)
+    await markInvoicePaid(organizationId, id, '2026-10-15')
+
+    const copy = await duplicateInvoice(organizationId, id, '2026-11-05')
+
+    expect(copy).toBeDefined()
+    expect(copy).not.toBe(id)
+    const original = await getInvoice(organizationId, id)
+    const draft = await getInvoice(organizationId, copy!)
+    // Due 30 days after it's issued, like the original.
+    expect(draft).toMatchObject({
+      status: 'draft',
+      number: null,
+      clientId,
+      currency: 'EUR',
+      issueDate: '2026-11-05',
+      dueDate: '2026-12-05',
+      notes: 'Thanks for your business',
+      total: original!.total,
+      paidOn: null,
+      publicToken: null,
+    })
+    const lines = (invoice: typeof draft) =>
+      invoice!.lines.map((line) => [
+        line.position,
+        line.description,
+        line.quantity,
+        line.unitPrice,
+        line.taxRate,
+        line.discountRate,
+      ])
+    expect(lines(draft)).toEqual(lines(original))
+    // The original is untouched.
+    expect(original).toMatchObject({ status: 'paid', number: 'INV-0001' })
   })
 })

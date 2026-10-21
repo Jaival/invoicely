@@ -1,12 +1,8 @@
 'use client'
 
-import {
-  markPaid,
-  markUnpaid,
-  markVoid,
-  type InvoiceFormState,
-} from '@/app/(app)/invoices/actions'
-import { TextField } from '@/components/form-fields'
+import { markUnpaid, markVoid } from '@/app/(app)/invoices/actions'
+import { MarkPaidDialog } from '@/components/invoices/invoice-dialogs'
+import { useDuplicateInvoice } from '@/hooks/use-duplicate-invoice'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +16,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import type { DisplayStatus } from '@/lib/invoices/status'
-import { Loader2 } from 'lucide-react'
+import { Copy, Loader2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
@@ -46,66 +42,29 @@ export function InvoiceActions({ id, status, today }: InvoiceActionsProps) {
   return null
 }
 
+// Starts a new draft from this invoice, e.g. for the next month's work.
+export function DuplicateButton({ id }: { id: string }) {
+  const [pending, duplicate] = useDuplicateInvoice(id)
+  return (
+    <Button variant="outline" disabled={pending} onClick={duplicate}>
+      {pending ? <Loader2 className="animate-spin" /> : <Copy />}
+      Duplicate
+    </Button>
+  )
+}
+
 function MarkPaid({ id, today }: { id: string; today: string }) {
   const [open, setOpen] = useState(false)
-  const [paidOn, setPaidOn] = useState(today)
-  const [state, setState] = useState<InvoiceFormState>({ status: 'idle' })
-  const [pending, startTransition] = useTransition()
-
-  function onConfirm(event: React.MouseEvent) {
-    // Keep the dialog open until it's recorded, or to show what's wrong.
-    event.preventDefault()
-    startTransition(async () => {
-      const result = await markPaid(id, paidOn)
-      setState(result)
-      if (result.status === 'success') {
-        setOpen(false)
-        toast.success('Marked as paid')
-      }
-    })
-  }
-
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        setState({ status: 'idle' })
-      }}
-    >
-      <AlertDialogTrigger asChild>
-        <Button>Mark as paid</Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Mark this invoice as paid?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Record the day the full amount arrived.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <TextField
-          name="paidOn"
-          label="Payment date"
-          type="date"
-          max={today}
-          value={paidOn}
-          onChange={(event) => setPaidOn(event.target.value)}
-          error={state.fieldErrors?.paidOn}
-        />
-        {state.status === 'error' && !state.fieldErrors?.paidOn && (
-          <p role="alert" className="text-sm text-destructive">
-            {state.message}
-          </p>
-        )}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction disabled={pending} onClick={onConfirm}>
-            {pending && <Loader2 className="animate-spin" />}
-            Mark as paid
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <Button onClick={() => setOpen(true)}>Mark as paid</Button>
+      <MarkPaidDialog
+        id={id}
+        today={today}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
   )
 }
 

@@ -1,12 +1,12 @@
 'use client'
 
 import {
-  removeDraft,
   saveInvoice,
   sendInvoice,
   type InvoiceFormState,
 } from '@/app/(app)/invoices/actions'
 import { SelectField, TextareaField, TextField } from '@/components/form-fields'
+import { DeleteDraftDialog } from '@/components/invoices/invoice-dialogs'
 import { InvoiceTotalsList } from '@/components/invoices/invoice-totals'
 import {
   AlertDialog,
@@ -446,48 +446,23 @@ function MarkSent({
 
 function DeleteDraft({ id }: { id: string }) {
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
-
-  function onDelete(event: React.MouseEvent) {
-    // Keep the dialog open until the delete finishes.
-    event.preventDefault()
-    startTransition(async () => {
-      const result = await removeDraft(id)
-      if (result.status === 'error') {
-        toast.error(result.message)
-        return
-      }
-      toast.success('Draft deleted')
-      router.push('/invoices')
-    })
-  }
-
+  const [open, setOpen] = useState(false)
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button type="button" variant="destructive" className="ml-auto">
-          Delete
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this draft?</AlertDialogTitle>
-          <AlertDialogDescription>
-            It was never sent, so no invoice number is lost. It can’t be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            disabled={pending}
-            onClick={onDelete}
-          >
-            {pending && <Loader2 className="animate-spin" />}
-            Delete draft
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <Button
+        type="button"
+        variant="destructive"
+        className="ml-auto"
+        onClick={() => setOpen(true)}
+      >
+        Delete
+      </Button>
+      <DeleteDraftDialog
+        id={id}
+        open={open}
+        onOpenChange={setOpen}
+        onDeleted={() => router.push('/invoices')}
+      />
+    </>
   )
 }

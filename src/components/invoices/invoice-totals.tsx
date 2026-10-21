@@ -6,7 +6,8 @@ type InvoiceTotalsListProps = {
   currency: string
 }
 
-// Subtotal, discount, one row per tax rate, and the total.
+// Subtotal, discount, one row per tax rate, and the total. Printed, a page
+// break never splits them.
 export function InvoiceTotalsList({
   totals,
   currency,
@@ -27,7 +28,7 @@ export function InvoiceTotalsList({
   }
 
   return (
-    <dl className="grid grid-cols-[1fr_auto] gap-x-8 gap-y-1 text-sm tabular-nums sm:ml-auto sm:min-w-72">
+    <dl className="grid break-inside-avoid grid-cols-[1fr_auto] gap-x-8 gap-y-1 text-sm tabular-nums sm:ml-auto sm:min-w-72">
       {rows.map(([label, amount]) => (
         <div key={label} className="col-span-2 grid grid-cols-subgrid">
           <dt className="text-muted-foreground">{label}</dt>
