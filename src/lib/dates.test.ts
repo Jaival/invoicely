@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   addDays,
+  daysBetween,
   formatDate,
   formatDateTime,
+  formatShortDate,
   isTimeZone,
   timeZoneLabel,
   today,
@@ -31,6 +33,19 @@ describe('dates', () => {
     expect(addDays('2026-10-01', 30)).toBe('2026-10-31')
     expect(addDays('2026-12-15', 30)).toBe('2027-01-14')
     expect(addDays('2028-02-28', 1)).toBe('2028-02-29')
+  })
+
+  it('counts the days between dates', () => {
+    expect(daysBetween('2026-10-21', '2026-10-21')).toBe(0)
+    expect(daysBetween('2026-10-21', '2026-11-02')).toBe(12)
+    expect(daysBetween('2026-10-21', '2026-10-09')).toBe(-12)
+    // Across the end of summer time, still whole days.
+    expect(daysBetween('2026-03-28', '2026-03-30')).toBe(2)
+  })
+
+  it('leaves the year out of short dates in the current year', () => {
+    expect(formatShortDate('2026-10-03', '2026-10-21')).toBe('Oct 3')
+    expect(formatShortDate('2025-12-30', '2026-01-02')).toBe('Dec 30, 2025')
   })
 
   it('formats without shifting the day', () => {

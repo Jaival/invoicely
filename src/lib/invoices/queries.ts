@@ -119,6 +119,7 @@ export async function listInvoices(
       currency: invoice.currency,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
+      paidOn: invoice.paidOn,
       total: invoice.total,
     })
     .from(invoice)
@@ -154,6 +155,32 @@ export async function countInvoicesByStatus(
   return Object.fromEntries(
     rows.map((row) => [row.status, row.count]),
   ) as Partial<Record<DisplayStatus, number>>
+}
+
+// What the business is owed in each currency: every sent, unpaid invoice,
+// and the overdue part of that. Amounts in different currencies are never
+// added together.
+export async function outstandingTotals(organizationId: string, today: string) {
+  const isOverdue = sql`${invoice.dueDate} < ${today}`
+  return db
+    .select({
+      currency: invoice.currency,
+      // Sums of bigints come back as numeric strings.
+      outstanding: sql`sum(${invoice.total})`.mapWith(Number),
+      overdue:
+        sql`coalesce(sum(${invoice.total}) filter (where ${isOverdue}), 0)`.mapWith(
+          Number,
+        ),
+    })
+    .from(invoice)
+    .where(
+      and(
+        eq(invoice.organizationId, organizationId),
+        eq(invoice.status, 'sent'),
+      ),
+    )
+    .groupBy(invoice.currency)
+    .orderBy(asc(invoice.currency))
 }
 
 export async function getInvoice(organizationId: string, id: string) {

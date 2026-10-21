@@ -17,6 +17,7 @@ import {
   listInvoiceEvents,
   listInvoices,
   markInvoicePaid,
+  outstandingTotals,
   markInvoiceSent,
   markInvoiceUnpaid,
   recordInvoiceEmailed,
@@ -343,6 +344,28 @@ describe('listInvoices', () => {
       all.sent,
       all.overdue,
       all.draft,
+    ])
+  })
+
+  it('adds up what’s owed and overdue in each currency', async () => {
+    const all = await oneOfEach()
+    // The sent and overdue invoices; not the paid, void or draft ones.
+    expect(await outstandingTotals(all.organizationId, TODAY)).toEqual([
+      { currency: 'EUR', outstanding: 40000, overdue: 30000 },
+    ])
+
+    const usd = await createInvoice(all.organizationId, {
+      ...values(await createClient(all.organizationId)),
+      currency: 'USD',
+    })
+    await markInvoiceSent(all.organizationId, usd!)
+    expect(await outstandingTotals(all.organizationId, TODAY)).toEqual([
+      { currency: 'EUR', outstanding: 40000, overdue: 30000 },
+      { currency: 'USD', outstanding: 27420, overdue: 0 },
+    ])
+    expect(await outstandingTotals(all.organizationId, '2026-10-05')).toEqual([
+      { currency: 'EUR', outstanding: 40000, overdue: 0 },
+      { currency: 'USD', outstanding: 27420, overdue: 0 },
     ])
   })
 

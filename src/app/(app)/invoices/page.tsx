@@ -33,8 +33,12 @@ import {
   type ListView,
   type SortKey,
 } from '@/lib/invoices/list'
-import { countInvoicesByStatus, listInvoices } from '@/lib/invoices/queries'
-import { displayStatus } from '@/lib/invoices/status'
+import {
+  countInvoicesByStatus,
+  listInvoices,
+  outstandingTotals,
+} from '@/lib/invoices/queries'
+import { displayStatus, dueLabel } from '@/lib/invoices/status'
 import { formatMoney } from '@/lib/money'
 import { businessToday } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
@@ -74,13 +78,14 @@ export default async function InvoicesPage({
   ])
   const options = parseListOptions(params)
   const today = await businessToday(organizationId)
-  const [invoices, counts] = await Promise.all([
+  const [invoices, counts, owed] = await Promise.all([
     listInvoices(organizationId, today, {
       search: options.search,
       statuses: viewStatuses[options.view],
       ...listOrder(options),
     }),
     countInvoicesByStatus(organizationId, today, options.search),
+    options.view === 'open' ? outstandingTotals(organizationId, today) : [],
   ])
   const matched = Object.values(counts).reduce((sum, n) => sum + n, 0)
   const viewCount = (view: ListView) =>
@@ -140,6 +145,9 @@ export default async function InvoicesPage({
   )
   // Small screens drop the dates, so the total and status fit.
   const wide = 'hidden sm:table-cell'
+  // Only the ledger needs the issue date; elsewhere what matters is when
+  // it's due.
+  const showIssued = options.view === 'all'
 
   return (
     <>
@@ -185,6 +193,7 @@ export default async function InvoicesPage({
           ))}
         </nav>
       </div>
+      {owed.length > 0 && <OwedTotals owed={owed} />}
       {invoices.length ? (
         <div className="border">
           <Table>
@@ -192,7 +201,8 @@ export default async function InvoicesPage({
               <TableRow>
                 {sortable('number', 'Number')}
                 {sortable('client', 'Client')}
-                {sortable('issued', 'Issued', { className: wide })}
+                {showIssued &&
+                  sortable('issued', 'Issued', { className: wide })}
                 {sortable('due', 'Due', { className: wide })}
                 {sortable('total', 'Total', { align: 'right' })}
                 <TableHead>Status</TableHead>
@@ -210,11 +220,20 @@ export default async function InvoicesPage({
                     </Link>
                   </TableCell>
                   <TableCell>{invoice.clientName}</TableCell>
-                  <TableCell className={cn(wide, 'text-muted-foreground')}>
-                    {formatDate(invoice.issueDate)}
-                  </TableCell>
-                  <TableCell className={cn(wide, 'text-muted-foreground')}>
-                    {formatDate(invoice.dueDate)}
+                  {showIssued && (
+                    <TableCell className={cn(wide, 'text-muted-foreground')}>
+                      {formatDate(invoice.issueDate)}
+                    </TableCell>
+                  )}
+                  <TableCell
+                    className={cn(
+                      wide,
+                      displayStatus(invoice, today) === 'overdue'
+                        ? 'font-medium text-destructive'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {dueLabel(invoice, today) ?? '—'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatMoney(invoice.total, invoice.currency)}
@@ -243,6 +262,44 @@ export default async function InvoicesPage({
         </p>
       )}
     </>
+  )
+}
+
+// What the business is owed, per currency: everything sent and unpaid, and
+// how much of it is overdue.
+function OwedTotals({
+  owed,
+}: {
+  owed: Awaited<ReturnType<typeof outstandingTotals>>
+}) {
+  const overdue = owed.filter((row) => row.overdue > 0)
+  const amounts = (rows: typeof owed, key: 'outstanding' | 'overdue') =>
+    rows.map((row) => (
+      <span key={row.currency} className="block">
+        {formatMoney(row[key], row.currency)}
+      </span>
+    ))
+
+  return (
+    <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
+      <div className="border p-4">
+        <dt className="text-sm text-muted-foreground">Outstanding</dt>
+        <dd className="mt-1 text-xl font-semibold tabular-nums">
+          {amounts(owed, 'outstanding')}
+        </dd>
+      </div>
+      <div className="border p-4">
+        <dt className="text-sm text-muted-foreground">Overdue</dt>
+        <dd
+          className={cn(
+            'mt-1 text-xl font-semibold tabular-nums',
+            overdue.length > 0 && 'text-destructive',
+          )}
+        >
+          {overdue.length > 0 ? amounts(overdue, 'overdue') : 'Nothing'}
+        </dd>
+      </div>
+    </dl>
   )
 }
 

@@ -22,10 +22,27 @@ export function today(timeZone = 'UTC', now = new Date()) {
 export const addDays = (isoDate: string, days: number) =>
   new Date(toDate(isoDate).getTime() + days * DAY_MS).toISOString().slice(0, 10)
 
+// Whole days from one date to another; negative when `to` is earlier.
+export const daysBetween = (from: string, to: string) =>
+  Math.round((toDate(to).getTime() - toDate(from).getTime()) / DAY_MS)
+
 // "Oct 1, 2026"
 export const formatDate = (isoDate: string, locale = 'en-US') =>
   new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(toDate(isoDate))
+
+// "Oct 1" in the current year, "Oct 1, 2025" in any other.
+export const formatShortDate = (
+  isoDate: string,
+  today: string,
+  locale = 'en-US',
+) =>
+  new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    year: isoDate.slice(0, 4) === today.slice(0, 4) ? undefined : 'numeric',
     timeZone: 'UTC',
   }).format(toDate(isoDate))
 

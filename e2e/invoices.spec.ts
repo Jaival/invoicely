@@ -271,6 +271,16 @@ test('search, filter and sort the invoice list', async ({ page }) => {
   await expect(rows.nth(0)).toContainText('INV-0002')
   await expect(rows.nth(1)).toContainText('INV-0001')
   await expect(rows.nth(2)).toContainText('Draft')
+
+  // When each is due, in words, and what's owed in total.
+  await expect(rows.nth(0)).toContainText(/\d+ days overdue/)
+  await expect(rows.nth(1)).toContainText('Due in 30 days')
+  const owed = (term: string) =>
+    page.locator('dt', { hasText: term }).locator('..')
+  await expect(owed('Outstanding')).toContainText('$400.00')
+  await expect(owed('Overdue')).toContainText('$300.00')
+  // The issue date is for the ledger, on All only.
+  await expect(page.getByRole('columnheader', { name: 'Issued' })).toBeHidden()
   await expect(filters.getByRole('link')).toHaveText([
     'Open3',
     'Overdue1',
@@ -297,6 +307,7 @@ test('search, filter and sort the invoice list', async ({ page }) => {
 
   // Sorting: largest total first, then the other way.
   await page.goto('/invoices?status=all')
+  await expect(page.getByRole('columnheader', { name: 'Issued' })).toBeVisible()
   const total = page.getByRole('columnheader', { name: 'Total' })
   await total.getByRole('link').click()
   await expect(total).toHaveAttribute('aria-sort', 'descending')
