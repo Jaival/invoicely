@@ -207,7 +207,8 @@ test('send an invoice, record its payment, then void it', async ({ page }) => {
     page.getByRole('region', { name: 'Activity' }).getByRole('listitem'),
   ).toContainText(['Sent', 'Marked paid, received', 'Marked unpaid', 'Voided'])
 
-  await page.goto('/invoices')
+  // Void invoices aren't open; the All tab still lists them.
+  await page.goto('/invoices?status=all')
   const row = page.getByRole('row', { name: /INV-0001/ })
   await expect(row).toContainText('Babbage & Co')
   await expect(row).toContainText('Void')
@@ -256,12 +257,28 @@ test('search, filter and sort the invoice list', async ({ page }) => {
   const rows = page.getByRole('row').filter({ has: page.getByRole('cell') })
   await expect(rows).toHaveCount(3)
 
-  // The status filter shows how many invoices each status has.
+  // Open is the default, with how many invoices each tab has: overdue
+  // first, then soonest due, drafts last.
   const filters = page.getByRole('navigation', { name: 'Filter by status' })
-  await expect(filters.getByRole('link', { name: 'All 3' })).toHaveAttribute(
+  await expect(filters.getByRole('link', { name: 'Open 3' })).toHaveAttribute(
     'aria-current',
     'true',
   )
+  await expect(page.getByRole('columnheader', { name: 'Due' })).toHaveAttribute(
+    'aria-sort',
+    'ascending',
+  )
+  await expect(rows.nth(0)).toContainText('INV-0002')
+  await expect(rows.nth(1)).toContainText('INV-0001')
+  await expect(rows.nth(2)).toContainText('Draft')
+  await expect(filters.getByRole('link')).toHaveText([
+    'Open3',
+    'Overdue1',
+    'Drafts1',
+    'Paid0',
+    'All3',
+  ])
+
   await filters.getByRole('link', { name: 'Overdue 1' }).click()
   await expect(page).toHaveURL('/invoices?status=overdue')
   await expect(rows).toHaveCount(1)
@@ -274,12 +291,12 @@ test('search, filter and sort the invoice list', async ({ page }) => {
   await expect(page.getByText('No invoices match these filters.')).toBeVisible()
   await expect(filters.getByRole('link', { name: 'All 1' })).toBeVisible()
   await filters.getByRole('link', { name: 'All 1' }).click()
-  await expect(page).toHaveURL('/invoices?q=ada')
+  await expect(page).toHaveURL('/invoices?q=ada&status=all')
   await expect(rows).toHaveCount(1)
   await expect(rows).toContainText('Ada Analytics')
 
   // Sorting: largest total first, then the other way.
-  await page.goto('/invoices')
+  await page.goto('/invoices?status=all')
   const total = page.getByRole('columnheader', { name: 'Total' })
   await total.getByRole('link').click()
   await expect(total).toHaveAttribute('aria-sort', 'descending')

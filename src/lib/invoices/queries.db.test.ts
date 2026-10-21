@@ -245,7 +245,7 @@ describe('listInvoices', () => {
   it('filters by status, working out overdue from the business’s today', async () => {
     const all = await oneOfEach()
     const list = (status: DisplayStatus, today = TODAY) =>
-      listInvoices(all.organizationId, today, { status }).then(ids)
+      listInvoices(all.organizationId, today, { statuses: [status] }).then(ids)
 
     expect(await list('draft')).toEqual([all.draft])
     expect(await list('sent')).toEqual([all.sent])
@@ -255,6 +255,15 @@ describe('listInvoices', () => {
     // Before its due date, the overdue one was just sent.
     expect(await list('sent', '2026-10-05')).toEqual([all.overdue, all.sent])
     expect(await list('overdue', '2026-10-05')).toEqual([])
+  })
+
+  it('filters by several statuses at once', async () => {
+    const all = await oneOfEach()
+    expect(
+      await listInvoices(all.organizationId, TODAY, {
+        statuses: ['draft', 'sent', 'overdue'],
+      }).then(ids),
+    ).toEqual([all.draft, all.overdue, all.sent])
   })
 
   it('searches numbers and client names, ignoring case', async () => {
@@ -279,7 +288,7 @@ describe('listInvoices', () => {
     expect(
       await listInvoices(all.organizationId, TODAY, {
         search: 'babbage',
-        status: 'overdue',
+        statuses: ['overdue'],
       }).then(ids),
     ).toEqual([all.overdue])
   })
@@ -320,12 +329,20 @@ describe('listInvoices', () => {
       all.sent,
       all.paid,
     ])
+    // Drafts aren't due yet, so they come last either way.
     expect(await sorted('due', 'asc')).toEqual([
       all.overdue,
-      all.draft,
       all.voided,
       all.paid,
       all.sent,
+      all.draft,
+    ])
+    expect(await sorted('due', 'desc')).toEqual([
+      all.voided,
+      all.paid,
+      all.sent,
+      all.overdue,
+      all.draft,
     ])
   })
 

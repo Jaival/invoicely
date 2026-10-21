@@ -28,6 +28,7 @@ import {
   eq,
   exists,
   ilike,
+  inArray,
   ne,
   or,
   sql,
@@ -55,7 +56,8 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 export type ListFilters = {
   // Matches the number or the client's name.
   search?: string
-  status?: DisplayStatus
+  // Every status when unset.
+  statuses?: readonly DisplayStatus[]
   // Newest first when unset.
   sort?: SortKey
   dir?: SortDirection
@@ -90,7 +92,7 @@ function matching(organizationId: string, search = '') {
 export async function listInvoices(
   organizationId: string,
   today: string,
-  { search, status, sort, dir = 'desc' }: ListFilters = {},
+  { search, statuses, sort, dir = 'desc' }: ListFilters = {},
 ) {
   // From a fixed pair of keywords, never user input.
   const direction = sql.raw(dir === 'asc' ? 'asc' : 'desc')
@@ -99,7 +101,11 @@ export async function listInvoices(
     number: [sql`${invoice.sequence} ${direction} nulls last`],
     client: [sql`lower(${clientName}) ${direction}`],
     issued: [sql`${invoice.issueDate} ${direction}`],
-    due: [sql`${invoice.dueDate} ${direction}`],
+    // Drafts aren't due until they're sent; they go last either way.
+    due: [
+      sql`${invoice.status} = 'draft'`,
+      sql`${invoice.dueDate} ${direction}`,
+    ],
     // Amounts only compare within a currency, so currencies are grouped.
     total: [asc(invoice.currency), sql`${invoice.total} ${direction}`],
   }
@@ -120,7 +126,7 @@ export async function listInvoices(
     .where(
       and(
         matching(organizationId, search),
-        status ? eq(displayStatusSql(today), status) : undefined,
+        statuses ? inArray(displayStatusSql(today), statuses) : undefined,
       ),
     )
     .orderBy(

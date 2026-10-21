@@ -24,14 +24,17 @@ import {
 import { formatDate } from '@/lib/dates'
 import {
   listHref,
-  listStatuses,
+  listOrder,
+  listTabs,
   parseListOptions,
   sortHref,
+  viewStatuses,
   type InvoiceListOptions,
+  type ListView,
   type SortKey,
 } from '@/lib/invoices/list'
 import { countInvoicesByStatus, listInvoices } from '@/lib/invoices/queries'
-import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
+import { displayStatus } from '@/lib/invoices/status'
 import { formatMoney } from '@/lib/money'
 import { businessToday } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
@@ -50,11 +53,13 @@ import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
-const statusLabels: Record<DisplayStatus, string> = {
-  draft: 'Draft',
-  sent: 'Sent',
+const viewLabels: Record<ListView, string> = {
+  open: 'Open',
   overdue: 'Overdue',
+  draft: 'Drafts',
   paid: 'Paid',
+  all: 'All',
+  sent: 'Sent',
   void: 'Void',
 }
 
@@ -70,10 +75,22 @@ export default async function InvoicesPage({
   const options = parseListOptions(params)
   const today = await businessToday(organizationId)
   const [invoices, counts] = await Promise.all([
-    listInvoices(organizationId, today, options),
+    listInvoices(organizationId, today, {
+      search: options.search,
+      statuses: viewStatuses[options.view],
+      ...listOrder(options),
+    }),
     countInvoicesByStatus(organizationId, today, options.search),
   ])
   const matched = Object.values(counts).reduce((sum, n) => sum + n, 0)
+  const viewCount = (view: ListView) =>
+    viewStatuses[view]?.reduce(
+      (sum, status) => sum + (counts[status] ?? 0),
+      0,
+    ) ?? matched
+  // A view without a tab, reached by URL, shows as one while it's open.
+  const tabs: ListView[] = [...listTabs]
+  if (!tabs.includes(options.view)) tabs.push(options.view)
 
   const heading = (
     <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
@@ -144,9 +161,9 @@ export default async function InvoicesPage({
               <Search />
             </InputGroupAddon>
           </InputGroup>
-          {/* A new search keeps the status filter and sort. */}
-          {options.status && (
-            <input type="hidden" name="status" value={options.status} />
+          {/* A new search keeps the view and sort. */}
+          {options.view !== 'open' && (
+            <input type="hidden" name="status" value={options.view} />
           )}
           {options.sort && (
             <>
@@ -156,18 +173,15 @@ export default async function InvoicesPage({
           )}
         </Form>
         <nav aria-label="Filter by status" className="flex flex-wrap gap-1">
-          <StatusLink options={options} count={matched}>
-            All
-          </StatusLink>
-          {listStatuses.map((status) => (
-            <StatusLink
-              key={status}
+          {tabs.map((view) => (
+            <ViewLink
+              key={view}
               options={options}
-              status={status}
-              count={counts[status] ?? 0}
+              view={view}
+              count={viewCount(view)}
             >
-              {statusLabels[status]}
-            </StatusLink>
+              {viewLabels[view]}
+            </ViewLink>
           ))}
         </nav>
       </div>
@@ -217,8 +231,13 @@ export default async function InvoicesPage({
         </div>
       ) : (
         <p className="text-muted-foreground">
-          No invoices match these filters.{' '}
-          <Link href="/invoices" className="text-foreground underline">
+          {options.view === 'open' && !options.search
+            ? 'Nothing open: every invoice is paid or void.'
+            : 'No invoices match these filters.'}{' '}
+          <Link
+            href="/invoices?status=all"
+            className="text-foreground underline"
+          >
             Show all invoices
           </Link>
         </p>
@@ -227,22 +246,22 @@ export default async function InvoicesPage({
   )
 }
 
-function StatusLink({
+function ViewLink({
   options,
-  status,
+  view,
   count,
   children,
 }: {
   options: InvoiceListOptions
-  status?: DisplayStatus
+  view: ListView
   count: number
   children: React.ReactNode
 }) {
-  const current = options.status === status
+  const current = options.view === view
   return (
     <Button variant={current ? 'secondary' : 'ghost'} size="sm" asChild>
       <Link
-        href={listHref(options, { status })}
+        href={listHref(options, { view })}
         aria-current={current ? 'true' : undefined}
       >
         {children}
@@ -267,7 +286,8 @@ function SortableHead({
   className?: string
   children: React.ReactNode
 }) {
-  const sorted = options.sort === sortKey ? options.dir : undefined
+  const order = listOrder(options)
+  const sorted = order.sort === sortKey ? order.dir : undefined
   const Icon = !sorted ? ArrowUpDown : sorted === 'asc' ? ArrowUp : ArrowDown
   return (
     <TableHead
