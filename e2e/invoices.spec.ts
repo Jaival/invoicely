@@ -379,6 +379,41 @@ test('act on invoices from the list', async ({ page }) => {
   ).toBeVisible()
 })
 
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('the list shows a card per invoice', async ({ page }) => {
+    await signUp(page)
+    await addClient(page, 'Babbage & Co')
+    await page.goto('/invoices/new')
+    await fillLine(page, 1, {
+      description: 'Audit',
+      quantity: '1',
+      unitPrice: '50',
+    })
+    await page.getByRole('button', { name: 'Save draft' }).click()
+    await expect(page).toHaveURL('/invoices')
+
+    await expect(page.getByRole('table')).toBeHidden()
+    const card = page
+      .getByRole('list', { name: 'Invoices' })
+      .getByRole('listitem')
+    await expect(card).toHaveCount(1)
+    await expect(card).toContainText('Babbage & Co')
+    await expect(card).toContainText('$50.00')
+    await expect(card).toContainText(/Draft · Due/)
+    await expect(
+      card.getByRole('button', {
+        name: 'Actions for the draft for Babbage & Co',
+      }),
+    ).toBeVisible()
+
+    // The whole card opens the invoice.
+    await card.getByRole('link', { name: 'Babbage & Co' }).click()
+    await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible()
+  })
+})
+
 test.describe('in Tokyo', () => {
   test.use({ timezoneId: 'Asia/Tokyo' })
 

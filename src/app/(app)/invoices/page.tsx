@@ -1,3 +1,4 @@
+import { InvoiceCards } from '@/components/invoices/invoice-cards'
 import { InvoiceRowMenu } from '@/components/invoices/invoice-row-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { Button } from '@/components/ui/button'
@@ -144,8 +145,6 @@ export default async function InvoicesPage({
       {label}
     </SortableHead>
   )
-  // Small screens drop the dates, so the total and status fit.
-  const wide = 'hidden sm:table-cell'
   // Only the ledger needs the issue date; elsewhere what matters is when
   // it's due.
   const showIssued = options.view === 'all'
@@ -196,70 +195,75 @@ export default async function InvoicesPage({
       </div>
       {owed.length > 0 && <OwedTotals owed={owed} />}
       {invoices.length ? (
-        <div className="border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {sortable('number', 'Number')}
-                {sortable('client', 'Client')}
-                {showIssued &&
-                  sortable('issued', 'Issued', { className: wide })}
-                {sortable('due', 'Due', { className: wide })}
-                {sortable('total', 'Total', { align: 'right' })}
-                <TableHead>Status</TableHead>
-                <TableHead className="w-0">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => {
-                const status = displayStatus(invoice, today)
-                return (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/invoices/${invoice.id}`}
-                        className="hover:underline"
-                      >
-                        {invoice.number ?? 'Draft'}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{invoice.clientName}</TableCell>
-                    {showIssued && (
-                      <TableCell className={cn(wide, 'text-muted-foreground')}>
-                        {formatDate(invoice.issueDate)}
+        <>
+          <InvoiceCards
+            invoices={invoices}
+            today={today}
+            className="sm:hidden"
+          />
+          <div className="hidden border sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {sortable('number', 'Number')}
+                  {sortable('client', 'Client')}
+                  {showIssued && sortable('issued', 'Issued')}
+                  {sortable('due', 'Due')}
+                  {sortable('total', 'Total', { align: 'right' })}
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-0">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => {
+                  const status = displayStatus(invoice, today)
+                  return (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/invoices/${invoice.id}`}
+                          className="hover:underline"
+                        >
+                          {invoice.number ?? 'Draft'}
+                        </Link>
                       </TableCell>
-                    )}
-                    <TableCell
-                      className={cn(
-                        wide,
-                        status === 'overdue'
-                          ? 'font-medium text-destructive'
-                          : 'text-muted-foreground',
+                      <TableCell>{invoice.clientName}</TableCell>
+                      {showIssued && (
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(invoice.issueDate)}
+                        </TableCell>
                       )}
-                    >
-                      {dueLabel(invoice, today) ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(invoice.total, invoice.currency)}
-                    </TableCell>
-                    <TableCell>
-                      <InvoiceStatusBadge status={status} />
-                    </TableCell>
-                    <TableCell className="py-0">
-                      <InvoiceRowMenu
-                        invoice={invoice}
-                        status={status}
-                        today={today}
-                      />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                      <TableCell
+                        className={cn(
+                          status === 'overdue'
+                            ? 'font-medium text-destructive'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        {dueLabel(invoice, today) ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(invoice.total, invoice.currency)}
+                      </TableCell>
+                      <TableCell>
+                        <InvoiceStatusBadge status={status} />
+                      </TableCell>
+                      <TableCell className="py-0">
+                        <InvoiceRowMenu
+                          invoice={invoice}
+                          status={status}
+                          today={today}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       ) : (
         <p className="text-muted-foreground">
           {options.view === 'open' && !options.search
