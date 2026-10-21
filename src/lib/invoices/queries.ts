@@ -281,7 +281,7 @@ export async function markInvoiceSent(organizationId: string, id: string) {
         clientDetails: partyDetails(billed),
         sentAt: new Date(),
       })
-      .where(eq(invoice.id, id))
+      .where(withStatus(organizationId, id, 'draft'))
     return number
   })
 }

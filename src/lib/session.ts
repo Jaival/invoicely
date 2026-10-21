@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { ensurePersonalOrganization } from '@/lib/organization'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
@@ -17,9 +18,9 @@ export async function requireSession() {
 }
 
 // The organization the signed-in user works in. Every session gets one when
-// it's created, so a session without one is stale.
-export async function requireOrganizationId() {
-  const { session } = await requireSession()
-  if (!session.activeOrganizationId) redirect('/sign-in')
-  return session.activeOrganizationId
-}
+// it's created, but Better Auth clears it when the user asks its API about
+// an organization they don't belong to; then they work in their own.
+export const requireOrganizationId = cache(async () => {
+  const { user, session } = await requireSession()
+  return session.activeOrganizationId ?? ensurePersonalOrganization(user.id)
+})

@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { getActiveOrganization, getBusinessProfile } from '@/lib/organization'
-import { requireSession } from '@/lib/session'
+import { requireOrganizationId, requireSession } from '@/lib/session'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
@@ -15,14 +15,14 @@ export const metadata: Metadata = { title: 'Dashboard' }
 
 // Placeholder until invoices give the dashboard something to show.
 export default async function DashboardPage() {
-  const { user, session } = await requireSession()
-  const organizationId = session.activeOrganizationId
-  const [activeOrganization, profile] = organizationId
-    ? await Promise.all([
-        getActiveOrganization(organizationId),
-        getBusinessProfile(organizationId),
-      ])
-    : []
+  const [{ user }, organizationId] = await Promise.all([
+    requireSession(),
+    requireOrganizationId(),
+  ])
+  const [activeOrganization, profile] = await Promise.all([
+    getActiveOrganization(organizationId),
+    getBusinessProfile(organizationId),
+  ])
 
   return (
     <>
