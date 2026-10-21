@@ -1,5 +1,6 @@
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { InvoiceDocument } from '@/components/invoices/invoice-view'
+import { PrintButton } from '@/components/invoices/print-button'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,7 +36,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 // An invoice as its client sees it, opened from the link the business
-// shared. No sign-in: the unguessable token in the URL is the key.
+// shared. No sign-in: the unguessable token in the URL is the key. Printed,
+// it's just the invoice: no buttons, card or footer.
 export default async function PublicInvoicePage({ params }: Props) {
   const { token } = await params
   const invoice = await findInvoice(token)
@@ -47,9 +49,9 @@ export default async function PublicInvoicePage({ params }: Props) {
   const from = invoice.businessDetails?.name
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 p-6">
-      <Card>
-        <CardHeader className="flex flex-wrap items-start justify-between gap-4">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 p-6 print:min-h-0 print:max-w-none print:p-0">
+      <Card className="print:border-0 print:py-0 print:shadow-none">
+        <CardHeader className="flex flex-wrap items-start justify-between gap-4 print:px-0">
           <div className="flex flex-col gap-2">
             <CardTitle className="flex items-center gap-3 text-xl">
               <h1>Invoice {invoice.number}</h1>
@@ -57,18 +59,21 @@ export default async function PublicInvoicePage({ params }: Props) {
             </CardTitle>
             {from && <CardDescription>From {from}</CardDescription>}
           </div>
-          <Button variant="outline" asChild>
-            <a href={`/i/${token}/pdf`} download>
-              <Download />
-              Download PDF
-            </a>
-          </Button>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <PrintButton />
+            <Button variant="outline" asChild>
+              <a href={`/i/${token}/pdf`} download>
+                <Download />
+                Download PDF
+              </a>
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="print:px-0">
           <InvoiceDocument invoice={invoice} timeZone={timeZone} />
         </CardContent>
       </Card>
-      <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+      <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground print:hidden">
         <Logo className="size-4" />
         Sent with Invoicely
       </p>

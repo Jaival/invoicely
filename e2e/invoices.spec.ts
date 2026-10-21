@@ -397,6 +397,20 @@ test('sending emails the client a link they can open signed out', async ({
   await expect(client.getByRole('region', { name: 'Bill to' })).toContainText(
     'Lovelace Ltd',
   )
+
+  // Printed, it's just the invoice, in black on white even in dark mode.
+  const print = client.getByRole('button', { name: 'Print' })
+  const background = () =>
+    client.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  await expect(print).toBeVisible()
+  const onScreen = await background()
+  await client.emulateMedia({ media: 'print', colorScheme: 'dark' })
+  await expect(print).toBeHidden()
+  await expect(client.getByText('Sent with Invoicely')).toBeHidden()
+  await expect(client.locator('html')).toHaveCSS('color-scheme', 'light')
+  expect(await background()).not.toBe(onScreen)
+  await client.emulateMedia({ media: 'screen' })
+
   const pdf = await client.request.get(`${link}/pdf`)
   expect(pdf.headers()['content-type']).toBe('application/pdf')
   await context.close()

@@ -145,7 +145,8 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
           ))}
         </dl>
       </div>
-      <div className="border">
+      {/* No frame on paper, where it would run on past a page break. */}
+      <div className="border print:border-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -159,7 +160,7 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
           </TableHeader>
           <TableBody>
             {invoice.lines.map((line) => (
-              <TableRow key={line.id}>
+              <TableRow key={line.id} className="break-inside-avoid">
                 <TableCell className="whitespace-normal">
                   {line.description}
                 </TableCell>
@@ -224,7 +225,7 @@ function Party({
 
 function Note({ heading, text }: { heading: string; text: string }) {
   return (
-    <section>
+    <section className="break-inside-avoid">
       <h2 className="mb-1 text-muted-foreground">{heading}</h2>
       <p className="whitespace-pre-line">{text}</p>
     </section>
