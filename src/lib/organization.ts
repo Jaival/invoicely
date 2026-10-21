@@ -1,5 +1,6 @@
 import { db } from '@/db'
 import { businessProfile, member, organization, user } from '@/db/schema'
+import { today } from '@/lib/dates'
 import { organizationSlug } from '@/lib/slug'
 import { asc, eq } from 'drizzle-orm'
 import { cache } from 'react'
@@ -58,3 +59,9 @@ export const getBusinessProfile = cache(async (organizationId: string) => {
     .where(eq(businessProfile.organizationId, organizationId))
   return profile
 })
+
+// Today's date where the business is, for default dates and overdue checks.
+export async function businessToday(organizationId: string) {
+  const profile = await getBusinessProfile(organizationId)
+  return today(profile?.timeZone ?? undefined)
+}

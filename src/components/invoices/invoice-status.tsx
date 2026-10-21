@@ -1,9 +1,10 @@
 import { Badge } from '@/components/ui/badge'
-import type { InvoiceStatus } from '@/db/schema'
+import type { DisplayStatus } from '@/lib/invoices/status'
 
-const labels: Record<InvoiceStatus, string> = {
+const labels: Record<DisplayStatus, string> = {
   draft: 'Draft',
   sent: 'Sent',
+  overdue: 'Overdue',
   paid: 'Paid',
   void: 'Void',
 }
@@ -11,11 +12,12 @@ const labels: Record<InvoiceStatus, string> = {
 const variants = {
   draft: 'outline',
   sent: 'secondary',
+  overdue: 'destructive',
   paid: 'default',
   void: 'outline',
 } as const
 
-export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
+export function InvoiceStatusBadge({ status }: { status: DisplayStatus }) {
   return (
     <Badge
       variant={variants[status]}

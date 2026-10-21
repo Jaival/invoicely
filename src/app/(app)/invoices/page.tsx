@@ -18,7 +18,9 @@ import {
 } from '@/components/ui/table'
 import { formatDate } from '@/lib/dates'
 import { listInvoices } from '@/lib/invoices/queries'
+import { displayStatus } from '@/lib/invoices/status'
 import { formatMoney } from '@/lib/money'
+import { businessToday } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
 import { FileText, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -28,7 +30,10 @@ export const metadata: Metadata = { title: 'Invoices' }
 
 export default async function InvoicesPage() {
   const organizationId = await requireOrganizationId()
-  const invoices = await listInvoices(organizationId)
+  const [invoices, today] = await Promise.all([
+    listInvoices(organizationId),
+    businessToday(organizationId),
+  ])
 
   const heading = (
     <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
@@ -102,7 +107,7 @@ export default async function InvoicesPage() {
                   {formatMoney(invoice.total, invoice.currency)}
                 </TableCell>
                 <TableCell>
-                  <InvoiceStatusBadge status={invoice.status} />
+                  <InvoiceStatusBadge status={displayStatus(invoice, today)} />
                 </TableCell>
               </TableRow>
             ))}
