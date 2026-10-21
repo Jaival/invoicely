@@ -29,6 +29,18 @@ export const formatDate = (isoDate: string, locale = 'en-US') =>
     timeZone: 'UTC',
   }).format(toDate(isoDate))
 
+// "Oct 1, 2026, 4:05 PM": a moment, as the clock read in a time zone.
+export const formatDateTime = (
+  moment: Date,
+  timeZone = 'UTC',
+  locale = 'en-US',
+) =>
+  new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  }).format(moment)
+
 // Whether the runtime knows an IANA time zone, e.g. "Europe/Berlin".
 export function isTimeZone(timeZone: string) {
   if (!timeZone) return false

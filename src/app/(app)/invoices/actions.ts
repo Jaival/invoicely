@@ -7,6 +7,7 @@ import {
   markInvoicePaid,
   markInvoiceSent,
   markInvoiceUnpaid,
+  recordInvoiceEmailed,
   updateDraft,
   voidInvoice,
 } from '@/lib/invoices/queries'
@@ -62,6 +63,7 @@ export async function sendInvoice(
   if (!number) return { status: 'error', message: gone }
   const sent = await getInvoice(organizationId, saved.id)
   const emailedTo = sent && (await emailInvoice(sent))
+  if (emailedTo) await recordInvoiceEmailed(organizationId, saved.id, emailedTo)
   return { status: 'success', id: saved.id, number, emailedTo }
 }
 

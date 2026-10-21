@@ -176,6 +176,44 @@ export const invoiceLine = pgTable(
   ],
 )
 
+// What has happened to a sent invoice, for its activity log.
+export const invoiceEventTypes = [
+  'sent',
+  'emailed',
+  'paid',
+  'unpaid',
+  'voided',
+] as const
+export type InvoiceEventType = (typeof invoiceEventTypes)[number]
+
+// The details an event carries: the address an invoice was emailed to, the
+// day a payment arrived.
+export type InvoiceEventData = { to?: string; paidOn?: string }
+
+// Added in the same transaction as the change it records, never edited.
+export const invoiceEvent = pgTable(
+  'invoice_event',
+  {
+    id: id(),
+    invoiceId: uuid()
+      .notNull()
+      .references(() => invoice.id, { onDelete: 'cascade' }),
+    type: text({ enum: invoiceEventTypes }).notNull(),
+    data: jsonb().$type<InvoiceEventData>(),
+    createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('invoice_event_invoice_id_created_at_idx').on(
+      table.invoiceId,
+      table.createdAt,
+    ),
+    check(
+      'invoice_event_type_valid',
+      sql`${table.type} in ('sent', 'emailed', 'paid', 'unpaid', 'voided')`,
+    ),
+  ],
+)
+
 export const invoiceRelations = relations(invoice, ({ one, many }) => ({
   organization: one(organization, {
     fields: [invoice.organizationId],
@@ -186,11 +224,19 @@ export const invoiceRelations = relations(invoice, ({ one, many }) => ({
     references: [client.id],
   }),
   lines: many(invoiceLine),
+  events: many(invoiceEvent),
 }))
 
 export const invoiceLineRelations = relations(invoiceLine, ({ one }) => ({
   invoice: one(invoice, {
     fields: [invoiceLine.invoiceId],
+    references: [invoice.id],
+  }),
+}))
+
+export const invoiceEventRelations = relations(invoiceEvent, ({ one }) => ({
+  invoice: one(invoice, {
+    fields: [invoiceEvent.invoiceId],
     references: [invoice.id],
   }),
 }))

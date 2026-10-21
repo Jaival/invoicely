@@ -23,6 +23,7 @@ const {
   client,
   invoice,
   invoiceCounter,
+  invoiceEvent,
   invoiceLine,
   member,
   organization,
@@ -33,7 +34,10 @@ const TODAY = '2026-10-21'
 
 // Tables owned through the table they reference rather than directly by an
 // organization.
-const ownedThrough: Record<string, string> = { invoice_line: 'invoice' }
+const ownedThrough: Record<string, string> = {
+  invoice_line: 'invoice',
+  invoice_event: 'invoice',
+}
 
 describe('schema', () => {
   // Better Auth's tables; membership decides who belongs to an organization.
@@ -239,6 +243,23 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       false,
     )
   },
+  async recordInvoiceEmailed() {
+    expect(
+      await invoices.recordInvoiceEmailed(
+        theirs.organizationId,
+        mine.sentId,
+        'them@example.com',
+      ),
+    ).toBe(false)
+  },
+  async listInvoiceEvents() {
+    expect(
+      await invoices.listInvoiceEvents(theirs.organizationId, mine.paidId),
+    ).toEqual([])
+    expect(
+      await invoices.listInvoiceEvents(theirs.organizationId, theirs.sentId),
+    ).toEqual([expect.objectContaining({ type: 'sent' })])
+  },
 }
 
 const organizationProbes: Record<keyof typeof organizations, Probe> = {
@@ -368,6 +389,16 @@ async function snapshot(organizationId: string) {
         ),
       )
       .orderBy(asc(invoiceLine.id)),
+    events: await db
+      .select()
+      .from(invoiceEvent)
+      .where(
+        inArray(
+          invoiceEvent.invoiceId,
+          invoiceRows.map((row) => row.id),
+        ),
+      )
+      .orderBy(asc(invoiceEvent.id)),
     counter: await db
       .select()
       .from(invoiceCounter)
