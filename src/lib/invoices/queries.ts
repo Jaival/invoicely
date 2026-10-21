@@ -11,9 +11,23 @@ import {
   type InvoiceStatus,
   type PartyDetails,
 } from '@/db/schema'
+import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
+import type { DisplayStatus } from '@/lib/invoices/status'
 import { invoiceTotals, type Line } from '@/lib/money'
-import { and, asc, desc, eq, exists, sql } from 'drizzle-orm'
+import { containsPattern } from '@/lib/search'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  ilike,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 
 // Every query takes the organization, so one business can never read or
 // change another's invoices. Callers pass the session's organization.
@@ -33,30 +47,102 @@ export type InvoiceValues = {
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
-// Newest first. Filters, search and sorting come with the invoice list.
-export async function listInvoices(organizationId: string) {
+export type ListFilters = {
+  // Matches the number or the client's name.
+  search?: string
+  status?: DisplayStatus
+  // Newest first when unset.
+  sort?: SortKey
+  dir?: SortDirection
+}
+
+// The client's name as printed once sent; their current name for drafts.
+const clientName = sql<string>`coalesce(${invoice.clientDetails}->>'name', ${client.name})`
+
+// The status as shown (see displayStatus), worked out in the database so it
+// can be filtered and counted. today is the business's.
+const displayStatusSql = (today: string) =>
+  sql<DisplayStatus>`case when ${invoice.status} = 'sent' and ${invoice.dueDate} < ${today} then 'overdue' else ${invoice.status} end`
+
+const withClient = and(
+  eq(client.organizationId, invoice.organizationId),
+  eq(client.id, invoice.clientId),
+)
+
+function matching(organizationId: string, search = '') {
+  const term = search.trim()
+  const pattern = containsPattern(term)
+  return and(
+    eq(invoice.organizationId, organizationId),
+    term
+      ? or(ilike(invoice.number, pattern), ilike(clientName, pattern))
+      : undefined,
+  )
+}
+
+// The business's invoices, searched, filtered by status and sorted. today
+// is the business's, which decides which invoices are overdue.
+export async function listInvoices(
+  organizationId: string,
+  today: string,
+  { search, status, sort, dir = 'desc' }: ListFilters = {},
+) {
+  // From a fixed pair of keywords, never user input.
+  const direction = sql.raw(dir === 'asc' ? 'asc' : 'desc')
+  const orderings: Record<SortKey, SQL[]> = {
+    // Drafts have no number yet; they go last either way.
+    number: [sql`${invoice.sequence} ${direction} nulls last`],
+    client: [sql`lower(${clientName}) ${direction}`],
+    issued: [sql`${invoice.issueDate} ${direction}`],
+    due: [sql`${invoice.dueDate} ${direction}`],
+    // Amounts only compare within a currency, so currencies are grouped.
+    total: [asc(invoice.currency), sql`${invoice.total} ${direction}`],
+  }
+
   return db
     .select({
       id: invoice.id,
       number: invoice.number,
       status: invoice.status,
-      // As printed once sent; the client's current name for drafts.
-      clientName: sql<string>`coalesce(${invoice.clientDetails}->>'name', ${client.name})`,
+      clientName,
       currency: invoice.currency,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
       total: invoice.total,
     })
     .from(invoice)
-    .innerJoin(
-      client,
+    .innerJoin(client, withClient)
+    .where(
       and(
-        eq(client.organizationId, invoice.organizationId),
-        eq(client.id, invoice.clientId),
+        matching(organizationId, search),
+        status ? eq(displayStatusSql(today), status) : undefined,
       ),
     )
-    .where(eq(invoice.organizationId, organizationId))
-    .orderBy(desc(invoice.createdAt), desc(invoice.id))
+    .orderBy(
+      ...(sort ? orderings[sort] : []),
+      desc(invoice.createdAt),
+      desc(invoice.id),
+    )
+}
+
+// How many invoices the search matches in each status, for the status
+// filter's labels.
+export async function countInvoicesByStatus(
+  organizationId: string,
+  today: string,
+  search?: string,
+) {
+  const rows = await db
+    .select({ status: displayStatusSql(today), count: count() })
+    .from(invoice)
+    .innerJoin(client, withClient)
+    .where(matching(organizationId, search))
+    // By position: the status expression's date parameter would make a
+    // repeated expression look different to Postgres.
+    .groupBy(sql`1`)
+  return Object.fromEntries(
+    rows.map((row) => [row.status, row.count]),
+  ) as Partial<Record<DisplayStatus, number>>
 }
 
 export async function getInvoice(organizationId: string, id: string) {
