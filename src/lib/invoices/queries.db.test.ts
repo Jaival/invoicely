@@ -1,6 +1,7 @@
 import { db } from '@/db'
 import { client, invoice, invoiceCounter } from '@/db/schema'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
+import { isPublicToken } from '@/lib/invoices/public-token'
 import type { DisplayStatus } from '@/lib/invoices/status'
 import { createClient, createOrganization } from '@/test/organizations'
 import { eq } from 'drizzle-orm'
@@ -12,6 +13,7 @@ import {
   createInvoice,
   deleteDraft,
   getInvoice,
+  getPublicInvoice,
   listInvoices,
   markInvoicePaid,
   markInvoiceSent,
@@ -439,6 +441,8 @@ describe('sending', () => {
 
     const sent = await getInvoice(organizationId, id)
     expect(sent?.sentAt).toBeInstanceOf(Date)
+    expect(isPublicToken(sent?.publicToken ?? '')).toBe(true)
+    expect((await getPublicInvoice(sent!.publicToken!))?.id).toBe(id)
     expect(sent?.clientDetails).toEqual({
       name: 'Test client',
       email: null,

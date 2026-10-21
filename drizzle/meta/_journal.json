@@ -43,6 +43,13 @@
       "when": 1792577857323,
       "tag": "0005_invoice_status",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792607363607,
+      "tag": "0006_invoice_public_token",
+      "breakpoints": true
     }
   ]
 }

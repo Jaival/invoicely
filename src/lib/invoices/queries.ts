@@ -13,6 +13,7 @@ import {
 } from '@/db/schema'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
+import { isPublicToken, newPublicToken } from '@/lib/invoices/public-token'
 import type { DisplayStatus } from '@/lib/invoices/status'
 import { invoiceTotals, type Line } from '@/lib/money'
 import { containsPattern } from '@/lib/search'
@@ -152,6 +153,17 @@ export async function getInvoice(organizationId: string, id: string) {
   })
 }
 
+// A sent invoice found by its public link, for clients who don't sign in.
+// The token is the only key: it's unguessable, so it stands in for a
+// session. Drafts have no token.
+export async function getPublicInvoice(token: string) {
+  if (!isPublicToken(token)) return undefined
+  return db.query.invoice.findFirst({
+    where: eq(invoice.publicToken, token),
+    with: { lines: { orderBy: [asc(invoiceLine.position)] } },
+  })
+}
+
 // Creates a draft. Returns undefined when the client isn't one of this
 // organization's.
 export async function createInvoice(
@@ -280,6 +292,7 @@ export async function markInvoiceSent(organizationId: string, id: string) {
         businessDetails,
         clientDetails: partyDetails(billed),
         sentAt: new Date(),
+        publicToken: newPublicToken(),
       })
       .where(withStatus(organizationId, id, 'draft'))
     return number

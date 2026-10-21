@@ -171,6 +171,18 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       ).toBeUndefined()
     }
   },
+  async getPublicInvoice() {
+    // Only the token opens an invoice, and only its own.
+    const [{ publicToken }] = await db
+      .select({ publicToken: invoice.publicToken })
+      .from(invoice)
+      .where(eq(invoice.id, theirs.sentId))
+    expect((await invoices.getPublicInvoice(publicToken!))?.id).toBe(
+      theirs.sentId,
+    )
+    expect(await invoices.getPublicInvoice('a'.repeat(32))).toBeUndefined()
+    expect(await invoices.getPublicInvoice('')).toBeUndefined()
+  },
   async createInvoice() {
     // Neither business can bill the other's client.
     expect(

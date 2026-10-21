@@ -79,6 +79,9 @@ export const invoice = pgTable(
     businessDetails: jsonb().$type<BusinessDetails>(),
     clientDetails: jsonb().$type<PartyDetails>(),
     sentAt: timestamp({ withTimezone: true }),
+    // The secret in the invoice's public link (/i/<token>), for clients who
+    // don't sign in. Set when sent, so drafts can't be opened.
+    publicToken: text().unique(),
     // The day the payment arrived, in the business's calendar.
     paidOn: date({ mode: 'string' }),
     voidedAt: timestamp({ withTimezone: true }),
