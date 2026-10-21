@@ -11,13 +11,16 @@ export { expect, linkFromEmail }
 // rule doesn't mistake it for React's use().)
 export const test = base.extend({
   page: async ({ page }, provide) => {
-    const octet = () => Math.floor(Math.random() * 254) + 1
-    await page.setExtraHTTPHeaders({
-      'x-forwarded-for': `10.${octet()}.${octet()}.${octet()}`,
-    })
+    await page.setExtraHTTPHeaders({ 'x-forwarded-for': randomAddress() })
     await provide(page)
   },
 })
+
+// A random private IPv4 address, for browser contexts a test opens itself.
+export function randomAddress() {
+  const octet = () => Math.floor(Math.random() * 254) + 1
+  return `10.${octet()}.${octet()}.${octet()}`
+}
 
 export const testPassword = 'correct-horse-battery'
 

@@ -1,4 +1,4 @@
-import { expect, signUp, test } from './fixtures'
+import { expect, randomAddress, signUp, test } from './fixtures'
 
 test('add, find, edit and delete a client', async ({ page }) => {
   await signUp(page)
@@ -81,7 +81,7 @@ test('clients are private to their business', async ({ page, browser }) => {
   // A second user in a separate browser context, with its own address for
   // the rate limiter (see fixtures.ts).
   const context = await browser.newContext({
-    extraHTTPHeaders: { 'x-forwarded-for': '10.255.0.1' },
+    extraHTTPHeaders: { 'x-forwarded-for': randomAddress() },
   })
   const other = await context.newPage()
   await signUp(other, 'Other')
