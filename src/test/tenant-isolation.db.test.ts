@@ -208,6 +208,15 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       ),
     ).toBeUndefined()
   },
+  async duplicateInvoice() {
+    expect(
+      await invoices.duplicateInvoice(
+        theirs.organizationId,
+        mine.sentId,
+        TODAY,
+      ),
+    ).toBeUndefined()
+  },
   async updateDraft() {
     expect(
       await invoices.updateDraft(

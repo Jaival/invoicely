@@ -14,6 +14,7 @@ import {
   type InvoiceStatus,
   type PartyDetails,
 } from '@/db/schema'
+import { addDays, daysBetween } from '@/lib/dates'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
 import { isPublicToken, newPublicToken } from '@/lib/invoices/public-token'
@@ -121,6 +122,7 @@ export async function listInvoices(
       dueDate: invoice.dueDate,
       paidOn: invoice.paidOn,
       total: invoice.total,
+      publicToken: invoice.publicToken,
     })
     .from(invoice)
     .innerJoin(client, withClient)
@@ -220,6 +222,35 @@ export async function createInvoice(
     if (violatesForeignKey(error, 'invoice_client_fk')) return undefined
     throw error
   }
+}
+
+// Copies an invoice, in any status, into a new draft for the same client:
+// dated issueDate, and due as long after that as the original was. Returns
+// the draft's id, or undefined when there is no such invoice.
+export async function duplicateInvoice(
+  organizationId: string,
+  id: string,
+  issueDate: string,
+) {
+  const source = await getInvoice(organizationId, id)
+  if (!source) return undefined
+  return createInvoice(organizationId, {
+    clientId: source.clientId,
+    currency: source.currency,
+    issueDate,
+    dueDate: addDays(issueDate, daysBetween(source.issueDate, source.dueDate)),
+    notes: source.notes,
+    terms: source.terms,
+    lines: source.lines.map(
+      ({ description, quantity, unitPrice, taxRate, discountRate }) => ({
+        description,
+        quantity,
+        unitPrice,
+        taxRate,
+        discountRate,
+      }),
+    ),
+  })
 }
 
 // Replaces a draft's details and lines. Returns false when there is no such

@@ -1,5 +1,8 @@
 import { CopyLinkButton } from '@/components/invoices/copy-link-button'
-import { InvoiceActions } from '@/components/invoices/invoice-actions'
+import {
+  DuplicateButton,
+  InvoiceActions,
+} from '@/components/invoices/invoice-actions'
 import { InvoiceActivity } from '@/components/invoices/invoice-activity'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { InvoiceTotalsList } from '@/components/invoices/invoice-totals'
@@ -22,9 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { PartyDetails } from '@/db/schema'
-import { env } from '@/env/client'
 import { formatDate, today } from '@/lib/dates'
 import type { getInvoice, listInvoiceEvents } from '@/lib/invoices/queries'
+import { publicInvoiceUrl } from '@/lib/invoices/links'
 import { partyLines } from '@/lib/invoices/party'
 import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
 import {
@@ -75,12 +78,7 @@ export function InvoiceView({
         </div>
         <div className="flex flex-wrap gap-2">
           {invoice.publicToken && (
-            <CopyLinkButton
-              url={
-                new URL(`/i/${invoice.publicToken}`, env.NEXT_PUBLIC_APP_URL)
-                  .href
-              }
-            />
+            <CopyLinkButton url={publicInvoiceUrl(invoice.publicToken)} />
           )}
           <Button variant="outline" asChild>
             {/* A plain link: the route answers with a file, not a page. */}
@@ -89,6 +87,7 @@ export function InvoiceView({
               Download PDF
             </a>
           </Button>
+          <DuplicateButton id={invoice.id} />
           <InvoiceActions
             id={invoice.id}
             status={status}

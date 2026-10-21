@@ -324,6 +324,61 @@ test('search, filter and sort the invoice list', async ({ page }) => {
   await expect(rows.last()).toContainText('Draft')
 })
 
+test('act on invoices from the list', async ({ page }) => {
+  await signUp(page)
+  await addClient(page, 'Babbage & Co')
+  await page.goto('/invoices/new')
+  await fillLine(page, 1, {
+    description: 'Audit',
+    quantity: '1',
+    unitPrice: '50',
+  })
+  await page.getByRole('button', { name: 'Mark as sent' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Mark as sent' })
+    .click()
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'INV-0001' }),
+  ).toBeVisible()
+
+  // Paid from its row; it leaves the Open tab.
+  await page.goto('/invoices')
+  await page.getByRole('button', { name: 'Actions for INV-0001' }).click()
+  await page.getByRole('menuitem', { name: 'Mark as paid…' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Mark as paid' })
+    .click()
+  await expect(page.getByText('Marked as paid')).toBeVisible()
+  await expect(
+    page.getByText('Nothing open: every invoice is paid or void.'),
+  ).toBeVisible()
+
+  // Duplicated into a new draft, ready to edit.
+  await page.goto('/invoices?status=paid')
+  await page.getByRole('button', { name: 'Actions for INV-0001' }).click()
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+  await expect(page.getByText('Duplicated as a new draft')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible()
+  await expect(line(page, 1).getByLabel('Description')).toHaveValue('Audit')
+
+  // Deleted from its row.
+  await page.goto('/invoices')
+  await page
+    .getByRole('button', { name: 'Actions for the draft for Babbage & Co' })
+    .click()
+  await page.getByRole('menuitem', { name: 'Delete…' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete draft' })
+    .click()
+  await expect(page.getByText('Draft deleted')).toBeVisible()
+  await expect(
+    page.getByText('Nothing open: every invoice is paid or void.'),
+  ).toBeVisible()
+})
+
 test.describe('in Tokyo', () => {
   test.use({ timezoneId: 'Asia/Tokyo' })
 

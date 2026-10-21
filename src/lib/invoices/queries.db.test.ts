@@ -12,6 +12,7 @@ import {
   countInvoicesByStatus,
   createInvoice,
   deleteDraft,
+  duplicateInvoice,
   getInvoice,
   getPublicInvoice,
   listInvoiceEvents,
@@ -648,5 +649,46 @@ describe('activity', () => {
     expect(await logged(organizationId, id)).toEqual([
       { type: 'sent', data: null },
     ])
+  })
+})
+
+describe('duplicating', () => {
+  it('copies an invoice into a new draft with fresh dates', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createDraft(organizationId, clientId)
+    await markInvoiceSent(organizationId, id)
+    await markInvoicePaid(organizationId, id, '2026-10-15')
+
+    const copy = await duplicateInvoice(organizationId, id, '2026-11-05')
+
+    expect(copy).toBeDefined()
+    expect(copy).not.toBe(id)
+    const original = await getInvoice(organizationId, id)
+    const draft = await getInvoice(organizationId, copy!)
+    // Due 30 days after it's issued, like the original.
+    expect(draft).toMatchObject({
+      status: 'draft',
+      number: null,
+      clientId,
+      currency: 'EUR',
+      issueDate: '2026-11-05',
+      dueDate: '2026-12-05',
+      notes: 'Thanks for your business',
+      total: original!.total,
+      paidOn: null,
+      publicToken: null,
+    })
+    const lines = (invoice: typeof draft) =>
+      invoice!.lines.map((line) => [
+        line.position,
+        line.description,
+        line.quantity,
+        line.unitPrice,
+        line.taxRate,
+        line.discountRate,
+      ])
+    expect(lines(draft)).toEqual(lines(original))
+    // The original is untouched.
+    expect(original).toMatchObject({ status: 'paid', number: 'INV-0001' })
   })
 })

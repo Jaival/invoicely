@@ -1,3 +1,4 @@
+import { InvoiceRowMenu } from '@/components/invoices/invoice-row-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { Button } from '@/components/ui/button'
 import {
@@ -206,45 +207,56 @@ export default async function InvoicesPage({
                 {sortable('due', 'Due', { className: wide })}
                 {sortable('total', 'Total', { align: 'right' })}
                 <TableHead>Status</TableHead>
+                <TableHead className="w-0">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/invoices/${invoice.id}`}
-                      className="hover:underline"
-                    >
-                      {invoice.number ?? 'Draft'}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{invoice.clientName}</TableCell>
-                  {showIssued && (
-                    <TableCell className={cn(wide, 'text-muted-foreground')}>
-                      {formatDate(invoice.issueDate)}
+              {invoices.map((invoice) => {
+                const status = displayStatus(invoice, today)
+                return (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/invoices/${invoice.id}`}
+                        className="hover:underline"
+                      >
+                        {invoice.number ?? 'Draft'}
+                      </Link>
                     </TableCell>
-                  )}
-                  <TableCell
-                    className={cn(
-                      wide,
-                      displayStatus(invoice, today) === 'overdue'
-                        ? 'font-medium text-destructive'
-                        : 'text-muted-foreground',
+                    <TableCell>{invoice.clientName}</TableCell>
+                    {showIssued && (
+                      <TableCell className={cn(wide, 'text-muted-foreground')}>
+                        {formatDate(invoice.issueDate)}
+                      </TableCell>
                     )}
-                  >
-                    {dueLabel(invoice, today) ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(invoice.total, invoice.currency)}
-                  </TableCell>
-                  <TableCell>
-                    <InvoiceStatusBadge
-                      status={displayStatus(invoice, today)}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell
+                      className={cn(
+                        wide,
+                        status === 'overdue'
+                          ? 'font-medium text-destructive'
+                          : 'text-muted-foreground',
+                      )}
+                    >
+                      {dueLabel(invoice, today) ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(invoice.total, invoice.currency)}
+                    </TableCell>
+                    <TableCell>
+                      <InvoiceStatusBadge status={status} />
+                    </TableCell>
+                    <TableCell className="py-0">
+                      <InvoiceRowMenu
+                        invoice={invoice}
+                        status={status}
+                        today={today}
+                      />
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
