@@ -1,5 +1,6 @@
 import { expect, randomAddress, signUp, test } from './fixtures'
 import type { Page } from '@playwright/test'
+import { linkFromEmail } from './outbox'
 
 async function addClient(page: Page, name: string) {
   await page.goto('/clients/new')
@@ -345,5 +346,50 @@ test('invoices are private to their business', async ({ page, browser }) => {
   await expect(other.getByText('No invoices yet')).toBeVisible()
   expect((await other.goto(invoiceUrl))?.status()).toBe(404)
   expect((await other.goto('/invoices/not-a-uuid'))?.status()).toBe(404)
+  await context.close()
+})
+
+test('sending emails the client a link they can open signed out', async ({
+  page,
+  browser,
+}) => {
+  await signUp(page)
+  const clientEmail = `client-${crypto.randomUUID()}@example.com`
+  await page.goto('/clients/new')
+  await page.getByLabel('Name').fill('Lovelace Ltd')
+  await page.getByLabel('Email').fill(clientEmail)
+  await page.getByRole('button', { name: 'Add client' }).click()
+  await expect(page).toHaveURL('/clients')
+
+  await page.goto('/invoices/new')
+  await fillLine(page, 1, {
+    description: 'Audit',
+    quantity: '1',
+    unitPrice: '50',
+  })
+  await page.getByRole('button', { name: 'Mark as sent' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Mark as sent' })
+    .click()
+  await expect(page.getByText(`INV-0001 sent to ${clientEmail}`)).toBeVisible()
+
+  const link = await linkFromEmail(clientEmail, /^Invoice INV-0001 from /)
+  expect(link).toMatch(/\/i\/[\w-]{32}$/)
+
+  // The client has no account: a fresh context with no session.
+  const context = await browser.newContext({
+    extraHTTPHeaders: { 'x-forwarded-for': randomAddress() },
+  })
+  const client = await context.newPage()
+  await client.goto(link)
+  await expect(
+    client.getByRole('heading', { level: 1, name: 'Invoice INV-0001' }),
+  ).toBeVisible()
+  await expect(client.getByRole('region', { name: 'Bill to' })).toContainText(
+    'Lovelace Ltd',
+  )
+  const pdf = await client.request.get(`${link}/pdf`)
+  expect(pdf.headers()['content-type']).toBe('application/pdf')
   await context.close()
 })

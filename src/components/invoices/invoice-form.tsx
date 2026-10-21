@@ -154,7 +154,13 @@ export function InvoiceForm({ id, invoice, clients }: InvoiceFormProps) {
     const result = await sendInvoice(id, values)
     setState(result)
     if (result.status === 'success') {
-      toast.success(`${result.number} marked as sent`)
+      if (result.emailedTo) {
+        toast.success(`${result.number} sent to ${result.emailedTo}`)
+      } else {
+        toast.success(`${result.number} marked as sent`, {
+          description: 'Not emailed: copy its link to share it.',
+        })
+      }
       router.push(`/invoices/${result.id}`)
     }
     return result.status === 'success'

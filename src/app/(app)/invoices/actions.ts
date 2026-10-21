@@ -3,6 +3,7 @@
 import {
   createInvoice,
   deleteDraft,
+  getInvoice,
   markInvoicePaid,
   markInvoiceSent,
   markInvoiceUnpaid,
@@ -14,6 +15,7 @@ import {
   issuesByPath,
   type InvoiceInput,
 } from '@/lib/invoices/schema'
+import { emailInvoice } from '@/lib/invoices/email'
 import { paymentDateError } from '@/lib/invoices/status'
 import { businessToday } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
@@ -31,6 +33,8 @@ export type SendInvoiceState = InvoiceFormState & {
   // Set once sent.
   id?: string
   number?: string
+  // The client's address, when the invoice was emailed to them.
+  emailedTo?: string
 }
 
 const gone = 'This draft no longer exists or has already been sent.'
@@ -56,7 +60,9 @@ export async function sendInvoice(
 
   const number = await markInvoiceSent(organizationId, saved.id)
   if (!number) return { status: 'error', message: gone }
-  return { status: 'success', id: saved.id, number }
+  const sent = await getInvoice(organizationId, saved.id)
+  const emailedTo = sent && (await emailInvoice(sent))
+  return { status: 'success', id: saved.id, number, emailedTo }
 }
 
 export async function removeDraft(id: string): Promise<InvoiceFormState> {
