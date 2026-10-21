@@ -1,5 +1,6 @@
 import { db } from '@/db'
 import { businessProfile, member, organization, user } from '@/db/schema'
+import type { BusinessProfileValues } from '@/lib/business-profile'
 import { today } from '@/lib/dates'
 import { organizationSlug } from '@/lib/slug'
 import { asc, eq } from 'drizzle-orm'
@@ -40,16 +41,13 @@ export async function ensurePersonalOrganization(userId: string) {
 
 // The organization the session is working in. Cached per request so the
 // layout and page can both ask for it.
-export const getActiveOrganization = cache(
-  async (organizationId: string | null | undefined) => {
-    if (!organizationId) return undefined
-    const [active] = await db
-      .select({ id: organization.id, name: organization.name })
-      .from(organization)
-      .where(eq(organization.id, organizationId))
-    return active
-  },
-)
+export const getActiveOrganization = cache(async (organizationId: string) => {
+  const [active] = await db
+    .select({ id: organization.id, name: organization.name })
+    .from(organization)
+    .where(eq(organization.id, organizationId))
+  return active
+})
 
 // The details printed on the organization's invoices, if it has set them up.
 export const getBusinessProfile = cache(async (organizationId: string) => {
@@ -59,6 +57,28 @@ export const getBusinessProfile = cache(async (organizationId: string) => {
     .where(eq(businessProfile.organizationId, organizationId))
   return profile
 })
+
+// Creates or replaces the organization's business profile. A logoUrl left
+// out keeps the current logo; null removes it. The business name is the
+// organization's name everywhere else too.
+export async function upsertBusinessProfile(
+  organizationId: string,
+  values: BusinessProfileValues & { logoUrl?: string | null },
+) {
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(businessProfile)
+      .values({ organizationId, ...values })
+      .onConflictDoUpdate({
+        target: businessProfile.organizationId,
+        set: { ...values, updatedAt: new Date() },
+      })
+    await tx
+      .update(organization)
+      .set({ name: values.name })
+      .where(eq(organization.id, organizationId))
+  })
+}
 
 // Today's date where the business is, for default dates and overdue checks.
 export async function businessToday(organizationId: string) {

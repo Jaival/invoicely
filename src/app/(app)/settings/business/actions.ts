@@ -1,7 +1,5 @@
 'use server'
 
-import { db } from '@/db'
-import { businessProfile, organization } from '@/db/schema'
 import { env } from '@/env/server'
 import {
   businessProfileSchema,
@@ -9,10 +7,9 @@ import {
   LOGO_MAX_BYTES,
 } from '@/lib/business-profile'
 import { log } from '@/lib/logger'
-import { getBusinessProfile } from '@/lib/organization'
-import { requireSession } from '@/lib/session'
+import { getBusinessProfile, upsertBusinessProfile } from '@/lib/organization'
+import { requireOrganizationId } from '@/lib/session'
 import { del, put } from '@vercel/blob'
-import { eq } from 'drizzle-orm'
 import { refresh } from 'next/cache'
 import * as z from 'zod'
 
@@ -28,11 +25,7 @@ export async function saveBusinessProfile(
   _previous: BusinessProfileState,
   formData: FormData,
 ): Promise<BusinessProfileState> {
-  const { session } = await requireSession()
-  const organizationId = session.activeOrganizationId
-  if (!organizationId) {
-    return { status: 'error', message: 'No active business. Sign in again.' }
-  }
+  const organizationId = await requireOrganizationId()
 
   const parsed = businessProfileSchema.safeParse(
     Object.fromEntries(
@@ -65,23 +58,9 @@ export async function saveBusinessProfile(
   }
 
   const previous = await getBusinessProfile(organizationId)
-  const values = {
+  await upsertBusinessProfile(organizationId, {
     ...parsed.data,
     ...(logoUrl !== undefined && { logoUrl }),
-  }
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(businessProfile)
-      .values({ organizationId, ...values })
-      .onConflictDoUpdate({
-        target: businessProfile.organizationId,
-        set: { ...values, updatedAt: new Date() },
-      })
-    // The business name is the organization's name everywhere else too.
-    await tx
-      .update(organization)
-      .set({ name: parsed.data.name })
-      .where(eq(organization.id, organizationId))
   })
 
   // Clean up the replaced logo. A failure only leaves an orphaned file.
