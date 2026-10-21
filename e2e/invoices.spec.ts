@@ -1,4 +1,4 @@
-import { expect, signUp, test } from './fixtures'
+import { expect, randomAddress, signUp, test } from './fixtures'
 import type { Page } from '@playwright/test'
 
 async function addClient(page: Page, name: string) {
@@ -207,6 +207,89 @@ test('send an invoice, record its payment, then void it', async ({ page }) => {
   await expect(row).toContainText('Void')
 })
 
+test('search, filter and sort the invoice list', async ({ page }) => {
+  await signUp(page)
+  await addClient(page, 'Ada Analytics')
+  await addClient(page, 'Babbage & Co')
+
+  async function createInvoice(
+    client: string,
+    unitPrice: string,
+    { dueDate, send }: { dueDate?: string; send?: boolean } = {},
+  ) {
+    await page.goto('/invoices/new')
+    await page.getByRole('combobox', { name: 'Client' }).click()
+    await page.getByRole('option', { name: client }).click()
+    await fillLine(page, 1, { description: 'Work', quantity: '1', unitPrice })
+    if (dueDate) {
+      await page.getByLabel('Issue date').fill('2026-01-01')
+      await page.getByLabel('Due date').fill(dueDate)
+    }
+    if (send) {
+      await page.getByRole('button', { name: 'Mark as sent' }).click()
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: 'Mark as sent' })
+        .click()
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    } else {
+      await page.getByRole('button', { name: 'Save draft' }).click()
+      await expect(page).toHaveURL('/invoices')
+    }
+  }
+
+  // Due 30 days from today by default, so not overdue.
+  await createInvoice('Ada Analytics', '100', { send: true })
+  await createInvoice('Babbage & Co', '300', {
+    dueDate: '2026-01-31',
+    send: true,
+  })
+  await createInvoice('Babbage & Co', '200')
+
+  await page.goto('/invoices')
+  const rows = page.getByRole('row').filter({ has: page.getByRole('cell') })
+  await expect(rows).toHaveCount(3)
+
+  // The status filter shows how many invoices each status has.
+  const filters = page.getByRole('navigation', { name: 'Filter by status' })
+  await expect(filters.getByRole('link', { name: 'All 3' })).toHaveAttribute(
+    'aria-current',
+    'true',
+  )
+  await filters.getByRole('link', { name: 'Overdue 1' }).click()
+  await expect(page).toHaveURL('/invoices?status=overdue')
+  await expect(rows).toHaveCount(1)
+  await expect(rows).toContainText('INV-0002')
+
+  // A search keeps the status filter.
+  await page.getByLabel('Search invoices').fill('ada')
+  await page.getByLabel('Search invoices').press('Enter')
+  await expect(page).toHaveURL('/invoices?q=ada&status=overdue')
+  await expect(page.getByText('No invoices match these filters.')).toBeVisible()
+  await expect(filters.getByRole('link', { name: 'All 1' })).toBeVisible()
+  await filters.getByRole('link', { name: 'All 1' }).click()
+  await expect(page).toHaveURL('/invoices?q=ada')
+  await expect(rows).toHaveCount(1)
+  await expect(rows).toContainText('Ada Analytics')
+
+  // Sorting: largest total first, then the other way.
+  await page.goto('/invoices')
+  const total = page.getByRole('columnheader', { name: 'Total' })
+  await total.getByRole('link').click()
+  await expect(total).toHaveAttribute('aria-sort', 'descending')
+  await expect(rows.first()).toContainText('$300.00')
+  await total.getByRole('link').click()
+  await expect(total).toHaveAttribute('aria-sort', 'ascending')
+  await expect(rows.first()).toContainText('$100.00')
+  // Drafts have no number, so they're last however numbers sort.
+  await page
+    .getByRole('columnheader', { name: 'Number' })
+    .getByRole('link')
+    .click()
+  await expect(rows.first()).toContainText('INV-0002')
+  await expect(rows.last()).toContainText('Draft')
+})
+
 test.describe('in Tokyo', () => {
   test.use({ timezoneId: 'Asia/Tokyo' })
 
@@ -247,14 +330,14 @@ test('invoices are private to their business', async ({ page, browser }) => {
     unitPrice: '500',
   })
   await owner.getByRole('button', { name: 'Save draft' }).click()
-  await owner.getByRole('link', { name: 'Draft' }).click()
+  await owner.getByRole('link', { name: 'Draft', exact: true }).click()
   await expect(owner).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/)
   const invoiceUrl = owner.url()
 
   // A second user in a separate browser context, with its own address for
   // the rate limiter (see fixtures.ts).
   const context = await browser.newContext({
-    extraHTTPHeaders: { 'x-forwarded-for': '10.255.0.2' },
+    extraHTTPHeaders: { 'x-forwarded-for': randomAddress() },
   })
   const other = await context.newPage()
   await signUp(other, 'Other')
