@@ -6,10 +6,14 @@ import {
   invoice,
   invoiceCounter,
   invoiceLine,
+  organization,
+  type BusinessDetails,
+  type InvoiceStatus,
+  type PartyDetails,
 } from '@/db/schema'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
 import { invoiceTotals, type Line } from '@/lib/money'
-import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, sql } from 'drizzle-orm'
 
 // Every query takes the organization, so one business can never read or
 // change another's invoices. Callers pass the session's organization.
@@ -36,7 +40,8 @@ export async function listInvoices(organizationId: string) {
       id: invoice.id,
       number: invoice.number,
       status: invoice.status,
-      clientName: client.name,
+      // As printed once sent; the client's current name for drafts.
+      clientName: sql<string>`coalesce(${invoice.clientDetails}->>'name', ${client.name})`,
       currency: invoice.currency,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
@@ -95,7 +100,7 @@ export async function updateDraft(
       const updated = await tx
         .update(invoice)
         .set({ ...values, ...totals(lines) })
-        .where(draft(organizationId, id))
+        .where(withStatus(organizationId, id, 'draft'))
         .returning({ id: invoice.id })
       if (updated.length === 0) return false
       await tx.delete(invoiceLine).where(eq(invoiceLine.invoiceId, id))
@@ -113,20 +118,32 @@ export async function updateDraft(
 export async function deleteDraft(organizationId: string, id: string) {
   const deleted = await db
     .delete(invoice)
-    .where(draft(organizationId, id))
+    .where(withStatus(organizationId, id, 'draft'))
     .returning({ id: invoice.id })
   return deleted.length > 0
 }
 
-// Gives a draft the organization's next invoice number and marks it sent.
-// Returns the number, or undefined when there is no such draft.
+// Gives a draft the organization's next invoice number, copies the
+// business's and client's current details onto it, and marks it sent.
+// Returns the number, or undefined when there is no such draft or it has no
+// lines.
 export async function markInvoiceSent(organizationId: string, id: string) {
   return db.transaction(async (tx) => {
     // Lock the draft first, so sending it twice at once numbers it once.
     const [found] = await tx
-      .select({ id: invoice.id })
+      .select({ clientId: invoice.clientId })
       .from(invoice)
-      .where(draft(organizationId, id))
+      .where(
+        and(
+          withStatus(organizationId, id, 'draft'),
+          exists(
+            tx
+              .select({ id: invoiceLine.id })
+              .from(invoiceLine)
+              .where(eq(invoiceLine.invoiceId, invoice.id)),
+          ),
+        ),
+      )
       .for('update')
     if (!found) return undefined
 
@@ -140,27 +157,110 @@ export async function markInvoiceSent(organizationId: string, id: string) {
       })
       .returning({ sequence: invoiceCounter.lastSequence })
 
-    const [profile] = await tx
-      .select({ prefix: businessProfile.invoicePrefix })
-      .from(businessProfile)
-      .where(eq(businessProfile.organizationId, organizationId))
-    // The business profile's default, for organizations without one yet.
-    const number = formatInvoiceNumber(profile?.prefix ?? 'INV', sequence)
+    const [business] = await tx
+      .select({ name: organization.name, profile: businessProfile })
+      .from(organization)
+      .leftJoin(
+        businessProfile,
+        eq(businessProfile.organizationId, organization.id),
+      )
+      .where(eq(organization.id, organizationId))
+    const [billed] = await tx
+      .select()
+      .from(client)
+      .where(
+        and(
+          eq(client.organizationId, organizationId),
+          eq(client.id, found.clientId),
+        ),
+      )
+
+    // The business profile's defaults, for organizations without one yet.
+    const profile = business.profile
+    const number = formatInvoiceNumber(
+      profile?.invoicePrefix ?? 'INV',
+      sequence,
+    )
+    const businessDetails: BusinessDetails = profile
+      ? { ...partyDetails(profile), logoUrl: profile.logoUrl }
+      : { ...partyDetails({ name: business.name }), logoUrl: null }
 
     await tx
       .update(invoice)
-      .set({ status: 'sent', sequence, number })
+      .set({
+        status: 'sent',
+        sequence,
+        number,
+        businessDetails,
+        clientDetails: partyDetails(billed),
+        sentAt: new Date(),
+      })
       .where(eq(invoice.id, id))
     return number
   })
 }
 
-function draft(organizationId: string, id: string) {
+// Records that a sent invoice was paid, on the given day. Returns false when
+// there is no such sent invoice.
+export async function markInvoicePaid(
+  organizationId: string,
+  id: string,
+  paidOn: string,
+) {
+  const updated = await db
+    .update(invoice)
+    .set({ status: 'paid', paidOn })
+    .where(withStatus(organizationId, id, 'sent'))
+    .returning({ id: invoice.id })
+  return updated.length > 0
+}
+
+// Undoes marking an invoice paid, e.g. after a payment bounced. Returns
+// false when there is no such paid invoice.
+export async function markInvoiceUnpaid(organizationId: string, id: string) {
+  const updated = await db
+    .update(invoice)
+    .set({ status: 'sent', paidOn: null })
+    .where(withStatus(organizationId, id, 'paid'))
+    .returning({ id: invoice.id })
+  return updated.length > 0
+}
+
+// Cancels a sent invoice for good. It keeps its number, so the sequence has
+// no gaps. Paid invoices must be marked unpaid first. Returns false when
+// there is no such sent invoice.
+export async function voidInvoice(organizationId: string, id: string) {
+  const updated = await db
+    .update(invoice)
+    .set({ status: 'void', voidedAt: new Date() })
+    .where(withStatus(organizationId, id, 'sent'))
+    .returning({ id: invoice.id })
+  return updated.length > 0
+}
+
+function withStatus(organizationId: string, id: string, status: InvoiceStatus) {
   return and(
     eq(invoice.organizationId, organizationId),
     eq(invoice.id, id),
-    eq(invoice.status, 'draft'),
+    eq(invoice.status, status),
   )
+}
+
+// The printed fields of a business profile or client.
+function partyDetails(
+  party: Partial<Record<keyof PartyDetails, string | null>> & { name: string },
+): PartyDetails {
+  return {
+    name: party.name,
+    email: party.email ?? null,
+    taxId: party.taxId ?? null,
+    addressLine1: party.addressLine1 ?? null,
+    addressLine2: party.addressLine2 ?? null,
+    city: party.city ?? null,
+    region: party.region ?? null,
+    postalCode: party.postalCode ?? null,
+    country: party.country ?? null,
+  }
 }
 
 function totals(lines: LineValues[]) {

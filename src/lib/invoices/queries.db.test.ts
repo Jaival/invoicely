@@ -1,5 +1,5 @@
 import { db } from '@/db'
-import { invoice, invoiceCounter } from '@/db/schema'
+import { client, invoice, invoiceCounter } from '@/db/schema'
 import { createClient, createOrganization } from '@/test/organizations'
 import { eq } from 'drizzle-orm'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -10,8 +10,11 @@ import {
   deleteDraft,
   getInvoice,
   listInvoices,
+  markInvoicePaid,
   markInvoiceSent,
+  markInvoiceUnpaid,
   updateDraft,
+  voidInvoice,
   type InvoiceValues,
 } from './queries'
 
@@ -262,6 +265,135 @@ describe('numbering', () => {
   })
 })
 
+describe('sending', () => {
+  it('copies the business and client details as they are', async () => {
+    const { organizationId, clientId } = await setUp('ACME')
+    const id = await createDraft(organizationId, clientId)
+    await markInvoiceSent(organizationId, id)
+
+    // Later edits to the client don't change what was sent.
+    await db
+      .update(client)
+      .set({ name: 'Renamed client', city: 'Berlin' })
+      .where(eq(client.id, clientId))
+
+    const sent = await getInvoice(organizationId, id)
+    expect(sent?.sentAt).toBeInstanceOf(Date)
+    expect(sent?.clientDetails).toEqual({
+      name: 'Test client',
+      email: null,
+      taxId: null,
+      addressLine1: null,
+      addressLine2: null,
+      city: null,
+      region: null,
+      postalCode: null,
+      country: null,
+    })
+    expect(sent?.businessDetails).toMatchObject({
+      name: 'Test business',
+      logoUrl: null,
+    })
+    const [listed] = await listInvoices(organizationId)
+    expect(listed.clientName).toBe('Test client')
+  })
+
+  it('uses the organization�s name when it has no business profile', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createDraft(organizationId, clientId)
+    await markInvoiceSent(organizationId, id)
+
+    expect((await getInvoice(organizationId, id))?.businessDetails).toEqual(
+      expect.objectContaining({ name: 'Test business', email: null }),
+    )
+  })
+
+  it('refuses a draft with no lines', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createInvoice(organizationId, {
+      ...values(clientId),
+      lines: [],
+    })
+
+    expect(await markInvoiceSent(organizationId, id!)).toBeUndefined()
+    expect(await getInvoice(organizationId, id!)).toMatchObject({
+      status: 'draft',
+      number: null,
+    })
+  })
+})
+
+describe('payment and voiding', () => {
+  async function sentInvoice() {
+    const { organizationId, clientId } = await setUp()
+    const id = await createDraft(organizationId, clientId)
+    await markInvoiceSent(organizationId, id)
+    return { organizationId, id }
+  }
+
+  it('marks a sent invoice paid, and back to unpaid', async () => {
+    const { organizationId, id } = await sentInvoice()
+
+    expect(await markInvoicePaid(organizationId, id, '2026-10-15')).toBe(true)
+    expect(await getInvoice(organizationId, id)).toMatchObject({
+      status: 'paid',
+      paidOn: '2026-10-15',
+    })
+    // Already paid.
+    expect(await markInvoicePaid(organizationId, id, '2026-10-16')).toBe(false)
+
+    expect(await markInvoiceUnpaid(organizationId, id)).toBe(true)
+    expect(await getInvoice(organizationId, id)).toMatchObject({
+      status: 'sent',
+      paidOn: null,
+    })
+    expect(await markInvoiceUnpaid(organizationId, id)).toBe(false)
+  })
+
+  it('voids a sent invoice for good, keeping its number', async () => {
+    const { organizationId, id } = await sentInvoice()
+
+    expect(await voidInvoice(organizationId, id)).toBe(true)
+    const voided = await getInvoice(organizationId, id)
+    expect(voided).toMatchObject({ status: 'void', number: 'INV-0001' })
+    expect(voided?.voidedAt).toBeInstanceOf(Date)
+
+    expect(await voidInvoice(organizationId, id)).toBe(false)
+    expect(await markInvoicePaid(organizationId, id, '2026-10-15')).toBe(false)
+    expect(await markInvoiceUnpaid(organizationId, id)).toBe(false)
+  })
+
+  it('only voids invoices that are sent and unpaid', async () => {
+    const { organizationId, id } = await sentInvoice()
+    await markInvoicePaid(organizationId, id, '2026-10-15')
+    expect(await voidInvoice(organizationId, id)).toBe(false)
+
+    const other = await setUp()
+    const draftId = await createDraft(other.organizationId, other.clientId)
+    expect(await voidInvoice(other.organizationId, draftId)).toBe(false)
+    expect(
+      await markInvoicePaid(other.organizationId, draftId, '2026-10-15'),
+    ).toBe(false)
+  })
+
+  it('keeps each status�s dates consistent in the database', async () => {
+    const { id } = await sentInvoice()
+
+    await expect(
+      db.update(invoice).set({ status: 'paid' }).where(eq(invoice.id, id)),
+    ).rejects.toThrow()
+    await expect(
+      db
+        .update(invoice)
+        .set({ paidOn: '2026-10-15' })
+        .where(eq(invoice.id, id)),
+    ).rejects.toThrow()
+    await expect(
+      db.update(invoice).set({ clientDetails: null }).where(eq(invoice.id, id)),
+    ).rejects.toThrow()
+  })
+})
+
 describe('privacy', () => {
   it('only bills clients of the same business', async () => {
     const mine = await setUp()
@@ -290,8 +422,16 @@ describe('privacy', () => {
     expect(await markInvoiceSent(theirs.organizationId, id)).toBeUndefined()
     expect(await deleteDraft(theirs.organizationId, id)).toBe(false)
 
+    await markInvoiceSent(mine.organizationId, id)
+    expect(await markInvoicePaid(theirs.organizationId, id, '2026-10-15')).toBe(
+      false,
+    )
+    expect(await voidInvoice(theirs.organizationId, id)).toBe(false)
+    await markInvoicePaid(mine.organizationId, id, '2026-10-15')
+    expect(await markInvoiceUnpaid(theirs.organizationId, id)).toBe(false)
+
     expect(await getInvoice(mine.organizationId, id)).toMatchObject({
-      status: 'draft',
+      status: 'paid',
       total: 27420,
     })
   })

@@ -151,6 +151,62 @@ test('invalid fields are flagged and keep what was typed', async ({ page }) => {
   await expect(page).toHaveURL('/invoices/new')
 })
 
+test('send an invoice, record its payment, then void it', async ({ page }) => {
+  await signUp(page)
+  await addClient(page, 'Babbage & Co')
+  await page.goto('/invoices/new')
+  await fillLine(page, 1, {
+    description: 'Design',
+    quantity: '2',
+    unitPrice: '100',
+  })
+  // Due in the past, so it's overdue as soon as it's sent.
+  await page.getByLabel('Issue date').fill('2026-01-05')
+  await page.getByLabel('Due date').fill('2026-02-04')
+
+  await page.getByRole('button', { name: 'Mark as sent' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await dialog.getByRole('button', { name: 'Mark as sent' }).click()
+
+  await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/)
+  await expect(page.getByText('INV-0001 marked as sent')).toBeVisible()
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'INV-0001' }),
+  ).toBeVisible()
+  const status = page.locator('[data-slot="badge"]')
+  await expect(status).toHaveText('Overdue')
+  await expect(page.getByRole('region', { name: 'Bill to' })).toContainText(
+    'Babbage & Co',
+  )
+  await expect(page.getByRole('row', { name: /Design/ })).toContainText(
+    '$200.00',
+  )
+  // Sent invoices can't be edited.
+  await expect(page.getByRole('button', { name: 'Save draft' })).toBeHidden()
+
+  await page.getByRole('button', { name: 'Mark as paid' }).click()
+  await expect(dialog.getByLabel('Payment date')).not.toHaveValue('')
+  await dialog.getByRole('button', { name: 'Mark as paid' }).click()
+  await expect(page.getByText('Marked as paid')).toBeVisible()
+  await expect(status).toHaveText('Paid')
+
+  // A mistaken payment can be undone, but a paid invoice can't be voided.
+  await expect(page.getByRole('button', { name: 'Void' })).toBeHidden()
+  await page.getByRole('button', { name: 'Mark as unpaid' }).click()
+  await expect(status).toHaveText('Overdue')
+
+  await page.getByRole('button', { name: 'Void' }).click()
+  await dialog.getByRole('button', { name: 'Void invoice' }).click()
+  await expect(page.getByText('Invoice voided')).toBeVisible()
+  await expect(status).toHaveText('Void')
+  await expect(page.getByRole('button', { name: 'Mark as paid' })).toBeHidden()
+
+  await page.goto('/invoices')
+  const row = page.getByRole('row', { name: /INV-0001/ })
+  await expect(row).toContainText('Babbage & Co')
+  await expect(row).toContainText('Void')
+})
+
 test.describe('in Tokyo', () => {
   test.use({ timezoneId: 'Asia/Tokyo' })
 

@@ -3,9 +3,11 @@
 import {
   removeDraft,
   saveInvoice,
+  sendInvoice,
   type InvoiceFormState,
 } from '@/app/(app)/invoices/actions'
 import { SelectField, TextareaField, TextField } from '@/components/form-fields'
+import { InvoiceTotalsList } from '@/components/invoices/invoice-totals'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +45,7 @@ import {
   type LineInput,
 } from '@/lib/invoices/schema'
 import { currencies, type Option } from '@/lib/locale-data'
-import { formatMoney, formatRate } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -144,6 +146,18 @@ export function InvoiceForm({ id, invoice, clients }: InvoiceFormProps) {
         router.push('/invoices')
       }
     })
+  }
+
+  // Saves what's in the editor, then sends it. Resolves once done, so the
+  // confirmation stays open until then.
+  async function onSend() {
+    const result = await sendInvoice(id, values)
+    setState(result)
+    if (result.status === 'success') {
+      toast.success(`${result.number} marked as sent`)
+      router.push(`/invoices/${result.id}`)
+    }
+    return result.status === 'success'
   }
 
   return (
@@ -301,7 +315,7 @@ export function InvoiceForm({ id, invoice, clients }: InvoiceFormProps) {
                 Add line
               </Button>
             </FieldSet>
-            <Totals totals={totals} money={money} />
+            <InvoiceTotalsList totals={totals} currency={values.currency} />
             <FieldSeparator />
             <TextareaField
               name="notes"
@@ -328,6 +342,7 @@ export function InvoiceForm({ id, invoice, clients }: InvoiceFormProps) {
             {pending && <Loader2 className="animate-spin" />}
             Save draft
           </Button>
+          <MarkSent disabled={pending} onSend={onSend} />
           <Button variant="outline" asChild>
             <Link href="/invoices">Cancel</Link>
           </Button>
@@ -376,40 +391,50 @@ function LineField({
   )
 }
 
-function Totals({
-  totals,
-  money,
+function MarkSent({
+  disabled,
+  onSend,
 }: {
-  totals: ReturnType<typeof previewTotals>
-  money: (minor: number) => string
+  disabled: boolean
+  onSend: () => Promise<boolean>
 }) {
-  if (!totals) {
-    return (
-      <p role="status" className="text-sm text-destructive sm:text-right">
-        These amounts are too large to add up.
-      </p>
-    )
-  }
+  const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
 
-  const rows: [string, number][] = [['Subtotal', totals.subtotal]]
-  if (totals.discount) rows.push(['Discount', -totals.discount])
-  for (const group of totals.taxes) {
-    if (group.rate) rows.push([`Tax ${formatRate(group.rate)}%`, group.tax])
+  function onConfirm(event: React.MouseEvent) {
+    // Keep the dialog open until the invoice is sent.
+    event.preventDefault()
+    startTransition(async () => {
+      // On failure, close it so the errors on the form show.
+      if (!(await onSend())) setOpen(false)
+    })
   }
 
   return (
-    <dl className="grid grid-cols-[1fr_auto] gap-x-8 gap-y-1 text-sm tabular-nums sm:ml-auto sm:min-w-72">
-      {rows.map(([label, amount]) => (
-        <div key={label} className="col-span-2 grid grid-cols-subgrid">
-          <dt className="text-muted-foreground">{label}</dt>
-          <dd className="text-right">{money(amount)}</dd>
-        </div>
-      ))}
-      <div className="col-span-2 mt-2 grid grid-cols-subgrid border-t pt-2 text-base font-semibold">
-        <dt>Total</dt>
-        <dd className="text-right">{money(totals.total)}</dd>
-      </div>
-    </dl>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button type="button" variant="outline" disabled={disabled}>
+          Mark as sent
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Mark this invoice as sent?</AlertDialogTitle>
+          <AlertDialogDescription>
+            It gets the next invoice number and can’t be edited afterwards.
+            Invoicely doesn’t email invoices yet, so send it to your client
+            yourself.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction disabled={pending} onClick={onConfirm}>
+            {pending && <Loader2 className="animate-spin" />}
+            Mark as sent
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

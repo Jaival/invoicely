@@ -65,7 +65,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Invoices: number sequence per org, issue/due dates, currency, notes, terms
 - [x] Line items: description, quantity, unit price, tax %, discount
 - [x] Money utilities in minor units with full unit-test coverage (rounding, tax, discounts, totals)
-- [ ] Status lifecycle: draft → sent → partially paid → paid / overdue / void
+- [x] Status lifecycle: draft → sent → paid / overdue / void (partially paid comes with payments in Phase 4)
 - [ ] Invoice list with filters, search, and sort
 - [ ] Every query scoped by organization (tenant isolation tests)
 
@@ -84,6 +84,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [ ] "Pay now" on the public invoice → Stripe Checkout on the user's connected account
 - [ ] Webhook handler (signature verification, idempotency) → record payment, update status
 - [ ] Manual payment recording (bank transfer, cash)
+- [ ] Partially paid status from recorded payments
 - [ ] Dashboard: outstanding, overdue, paid this month, per currency
 - [ ] E2E: create invoice → send → pay with Stripe test card → status `paid`
 - [ ] Launch checklist: privacy policy, terms, custom domain, backups verified

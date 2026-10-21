@@ -1,20 +1,12 @@
 import { InvoiceForm } from '@/components/invoices/invoice-form'
-import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { InvoiceView } from '@/components/invoices/invoice-view'
 import { listClients } from '@/lib/clients/queries'
 import { getInvoice } from '@/lib/invoices/queries'
 import { formatAmount, formatQuantity, formatRate } from '@/lib/money'
+import { getBusinessProfile } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
 import { isUuid } from '@/lib/validation'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = { title: 'Invoice' }
@@ -35,25 +27,10 @@ export default async function InvoicePage({
   const invoice = isUuid(id) ? await getInvoice(organizationId, id) : undefined
   if (!invoice) notFound()
 
-  // Placeholder until sent invoices get their own page.
   if (invoice.status !== 'draft') {
+    const profile = await getBusinessProfile(organizationId)
     return (
-      <Card className="max-w-4xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            {invoice.number}
-            <InvoiceStatusBadge status={invoice.status} />
-          </CardTitle>
-          <CardDescription>
-            This invoice has been sent, so it can no longer be edited.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button variant="outline" asChild>
-            <Link href="/invoices">Back to invoices</Link>
-          </Button>
-        </CardFooter>
-      </Card>
+      <InvoiceView invoice={invoice} timeZone={profile?.timeZone ?? 'UTC'} />
     )
   }
 

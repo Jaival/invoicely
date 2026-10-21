@@ -6,8 +6,10 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
+  timestamp,
   unique,
   uuid,
 } from 'drizzle-orm/pg-core'
@@ -16,9 +18,26 @@ import { organization } from './auth'
 import { client } from './clients'
 import { id, timestamps } from './columns'
 
-// Overdue is not stored: it is a sent invoice past its due date.
+// Overdue is not stored: it is a sent invoice past its due date (see
+// src/lib/invoices/status.ts).
 export const invoiceStatuses = ['draft', 'sent', 'paid', 'void'] as const
 export type InvoiceStatus = (typeof invoiceStatuses)[number]
+
+// A business or client as printed on an invoice, copied when it's sent so
+// later edits to either don't change invoices already sent.
+export type PartyDetails = {
+  name: string
+  email: string | null
+  taxId: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  region: string | null
+  postalCode: string | null
+  // ISO 3166-1 alpha-2
+  country: string | null
+}
+export type BusinessDetails = PartyDetails & { logoUrl: string | null }
 
 // The last invoice number each organization handed out. Taking the next one
 // locks the row until the transaction ends, so numbers never repeat, and a
@@ -56,6 +75,13 @@ export const invoice = pgTable(
     discount: bigint({ mode: 'number' }).notNull().default(0),
     tax: bigint({ mode: 'number' }).notNull().default(0),
     total: bigint({ mode: 'number' }).notNull().default(0),
+    // Copied when sent; drafts show the current details instead.
+    businessDetails: jsonb().$type<BusinessDetails>(),
+    clientDetails: jsonb().$type<PartyDetails>(),
+    sentAt: timestamp({ withTimezone: true }),
+    // The day the payment arrived, in the business's calendar.
+    paidOn: date({ mode: 'string' }),
+    voidedAt: timestamp({ withTimezone: true }),
     ...timestamps,
   },
   (table) => [
@@ -89,6 +115,19 @@ export const invoice = pgTable(
     check(
       'invoice_numbered_unless_draft',
       sql`(${table.status} = 'draft') = (${table.sequence} is null) and (${table.sequence} is null) = (${table.number} is null)`,
+    ),
+    // Each status carries what it needs, and nothing it doesn't.
+    check(
+      'invoice_sent_details_unless_draft',
+      sql`(${table.status} = 'draft') = (${table.sentAt} is null) and (${table.sentAt} is null) = (${table.businessDetails} is null) and (${table.sentAt} is null) = (${table.clientDetails} is null)`,
+    ),
+    check(
+      'invoice_paid_on_when_paid',
+      sql`(${table.status} = 'paid') = (${table.paidOn} is not null)`,
+    ),
+    check(
+      'invoice_voided_at_when_void',
+      sql`(${table.status} = 'void') = (${table.voidedAt} is not null)`,
     ),
     check('invoice_currency_iso', sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check(
