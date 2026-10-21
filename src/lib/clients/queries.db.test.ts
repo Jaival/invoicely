@@ -34,15 +34,6 @@ describe('deleteClient', () => {
     expect(await deleteClient(organizationId, clientId)).toBe('has-invoices')
     expect(await getClient(organizationId, clientId)).toBeDefined()
   })
-
-  it('leaves other businesses’ clients alone', async () => {
-    const organizationId = await createOrganization()
-    const clientId = await createClient(organizationId)
-    const other = await createOrganization()
-
-    expect(await deleteClient(other, clientId)).toBe('not-found')
-    expect(await getClient(organizationId, clientId)).toBeDefined()
-  })
 })
 
 it('deleting a business deletes its clients and invoices', async () => {

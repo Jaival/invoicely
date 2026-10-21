@@ -1,14 +1,30 @@
 import { db } from '@/db'
-import { businessProfile, client, organization } from '@/db/schema'
+import {
+  businessProfile,
+  client,
+  member,
+  organization,
+  user,
+} from '@/db/schema'
 import { inArray } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { afterAll } from 'vitest'
 
-// Organizations created by a test file, deleted (with everything they own)
-// once its tests finish.
+// Organizations and users created by a test file, deleted (with everything
+// they own) once its tests finish.
 const created: string[] = []
+const users: string[] = []
 
 afterAll(async () => {
+  if (users.length > 0) {
+    // Including the organizations created for them on first sign-in.
+    const memberships = await db
+      .select({ organizationId: member.organizationId })
+      .from(member)
+      .where(inArray(member.userId, users))
+    created.push(...memberships.map((row) => row.organizationId))
+    await db.delete(user).where(inArray(user.id, users))
+  }
   if (created.length > 0) {
     await db.delete(organization).where(inArray(organization.id, created))
   }
@@ -38,5 +54,14 @@ export async function createClient(organizationId: string) {
     .insert(client)
     .values({ organizationId, name: 'Test client' })
     .returning({ id: client.id })
+  return created.id
+}
+
+export async function createUser(name = 'Test user') {
+  const [created] = await db
+    .insert(user)
+    .values({ name, email: `test-${randomUUID()}@example.com` })
+    .returning({ id: user.id })
+  users.push(created.id)
   return created.id
 }
