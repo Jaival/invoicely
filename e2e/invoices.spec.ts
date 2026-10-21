@@ -202,6 +202,11 @@ test('send an invoice, record its payment, then void it', async ({ page }) => {
   await expect(status).toHaveText('Void')
   await expect(page.getByRole('button', { name: 'Mark as paid' })).toBeHidden()
 
+  // Every change is logged, oldest first.
+  await expect(
+    page.getByRole('region', { name: 'Activity' }).getByRole('listitem'),
+  ).toContainText(['Sent', 'Marked paid, received', 'Marked unpaid', 'Voided'])
+
   await page.goto('/invoices')
   const row = page.getByRole('row', { name: /INV-0001/ })
   await expect(row).toContainText('Babbage & Co')
@@ -373,6 +378,9 @@ test('sending emails the client a link they can open signed out', async ({
     .getByRole('button', { name: 'Mark as sent' })
     .click()
   await expect(page.getByText(`INV-0001 sent to ${clientEmail}`)).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Activity' }).getByRole('listitem'),
+  ).toContainText(['Sent', `Emailed to ${clientEmail}`])
 
   const link = await linkFromEmail(clientEmail, /^Invoice INV-0001 from /)
   expect(link).toMatch(/\/i\/[\w-]{32}$/)

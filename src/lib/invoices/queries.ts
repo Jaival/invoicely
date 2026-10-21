@@ -5,9 +5,12 @@ import {
   client,
   invoice,
   invoiceCounter,
+  invoiceEvent,
   invoiceLine,
   organization,
   type BusinessDetails,
+  type InvoiceEventData,
+  type InvoiceEventType,
   type InvoiceStatus,
   type PartyDetails,
 } from '@/db/schema'
@@ -25,6 +28,7 @@ import {
   eq,
   exists,
   ilike,
+  ne,
   or,
   sql,
   type SQL,
@@ -295,6 +299,7 @@ export async function markInvoiceSent(organizationId: string, id: string) {
         publicToken: newPublicToken(),
       })
       .where(withStatus(organizationId, id, 'draft'))
+    await addEvent(tx, id, { type: 'sent' })
     return number
   })
 }
@@ -306,35 +311,104 @@ export async function markInvoicePaid(
   id: string,
   paidOn: string,
 ) {
-  const updated = await db
-    .update(invoice)
-    .set({ status: 'paid', paidOn })
-    .where(withStatus(organizationId, id, 'sent'))
-    .returning({ id: invoice.id })
-  return updated.length > 0
+  return changeStatus(
+    organizationId,
+    id,
+    'sent',
+    { status: 'paid', paidOn },
+    { type: 'paid', data: { paidOn } },
+  )
 }
 
 // Undoes marking an invoice paid, e.g. after a payment bounced. Returns
 // false when there is no such paid invoice.
 export async function markInvoiceUnpaid(organizationId: string, id: string) {
-  const updated = await db
-    .update(invoice)
-    .set({ status: 'sent', paidOn: null })
-    .where(withStatus(organizationId, id, 'paid'))
-    .returning({ id: invoice.id })
-  return updated.length > 0
+  return changeStatus(
+    organizationId,
+    id,
+    'paid',
+    { status: 'sent', paidOn: null },
+    { type: 'unpaid' },
+  )
 }
 
 // Cancels a sent invoice for good. It keeps its number, so the sequence has
 // no gaps. Paid invoices must be marked unpaid first. Returns false when
 // there is no such sent invoice.
 export async function voidInvoice(organizationId: string, id: string) {
-  const updated = await db
-    .update(invoice)
-    .set({ status: 'void', voidedAt: new Date() })
-    .where(withStatus(organizationId, id, 'sent'))
-    .returning({ id: invoice.id })
-  return updated.length > 0
+  return changeStatus(
+    organizationId,
+    id,
+    'sent',
+    { status: 'void', voidedAt: new Date() },
+    { type: 'voided' },
+  )
+}
+
+// Logs that a sent invoice was emailed to its client. Returns false when
+// there is no such sent invoice.
+export async function recordInvoiceEmailed(
+  organizationId: string,
+  id: string,
+  to: string,
+) {
+  return db.transaction(async (tx) => {
+    const [found] = await tx
+      .select({ id: invoice.id })
+      .from(invoice)
+      .where(
+        and(
+          eq(invoice.organizationId, organizationId),
+          eq(invoice.id, id),
+          ne(invoice.status, 'draft'),
+        ),
+      )
+    if (!found) return false
+    await addEvent(tx, id, { type: 'emailed', data: { to } })
+    return true
+  })
+}
+
+// An invoice's activity log, oldest first.
+export async function listInvoiceEvents(organizationId: string, id: string) {
+  return db
+    .select({
+      id: invoiceEvent.id,
+      type: invoiceEvent.type,
+      data: invoiceEvent.data,
+      createdAt: invoiceEvent.createdAt,
+    })
+    .from(invoiceEvent)
+    .innerJoin(invoice, eq(invoice.id, invoiceEvent.invoiceId))
+    .where(and(eq(invoice.organizationId, organizationId), eq(invoice.id, id)))
+    .orderBy(asc(invoiceEvent.createdAt), asc(invoiceEvent.id))
+}
+
+// Moves an invoice from one status to another and logs it, together.
+// Returns false when there is no such invoice in that status.
+async function changeStatus(
+  organizationId: string,
+  id: string,
+  from: InvoiceStatus,
+  values: Partial<typeof invoice.$inferInsert>,
+  event: Event,
+) {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(invoice)
+      .set(values)
+      .where(withStatus(organizationId, id, from))
+      .returning({ id: invoice.id })
+    if (updated.length === 0) return false
+    await addEvent(tx, id, event)
+    return true
+  })
+}
+
+type Event = { type: InvoiceEventType; data?: InvoiceEventData }
+
+async function addEvent(tx: Transaction, invoiceId: string, event: Event) {
+  await tx.insert(invoiceEvent).values({ invoiceId, ...event })
 }
 
 function withStatus(organizationId: string, id: string, status: InvoiceStatus) {

@@ -1,5 +1,6 @@
 import { CopyLinkButton } from '@/components/invoices/copy-link-button'
 import { InvoiceActions } from '@/components/invoices/invoice-actions'
+import { InvoiceActivity } from '@/components/invoices/invoice-activity'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { InvoiceTotalsList } from '@/components/invoices/invoice-totals'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,7 @@ import {
 import type { PartyDetails } from '@/db/schema'
 import { env } from '@/env/client'
 import { formatDate, today } from '@/lib/dates'
-import type { getInvoice } from '@/lib/invoices/queries'
+import type { getInvoice, listInvoiceEvents } from '@/lib/invoices/queries'
 import { partyLines } from '@/lib/invoices/party'
 import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
 import {
@@ -49,8 +50,15 @@ const descriptions: Partial<Record<DisplayStatus, string>> = {
   void: 'Voided: no longer owed.',
 }
 
-// A sent invoice as it was sent. Read-only; only its status changes.
-export function InvoiceView({ invoice, timeZone }: InvoiceViewProps) {
+// A sent invoice as it was sent, and what has happened to it since.
+// Read-only; only its status changes.
+export function InvoiceView({
+  invoice,
+  events,
+  timeZone,
+}: InvoiceViewProps & {
+  events: Awaited<ReturnType<typeof listInvoiceEvents>>
+}) {
   const businessToday = today(timeZone)
   const status = displayStatus(invoice, businessToday)
 
@@ -88,8 +96,14 @@ export function InvoiceView({ invoice, timeZone }: InvoiceViewProps) {
           />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-8">
         <InvoiceDocument invoice={invoice} timeZone={timeZone} />
+        {events.length > 0 && (
+          <>
+            <Separator />
+            <InvoiceActivity events={events} timeZone={timeZone} />
+          </>
+        )}
       </CardContent>
       <CardFooter>
         <Button variant="outline" asChild>

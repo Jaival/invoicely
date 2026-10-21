@@ -14,10 +14,12 @@ import {
   deleteDraft,
   getInvoice,
   getPublicInvoice,
+  listInvoiceEvents,
   listInvoices,
   markInvoicePaid,
   markInvoiceSent,
   markInvoiceUnpaid,
+  recordInvoiceEmailed,
   updateDraft,
   voidInvoice,
   type InvoiceValues,
@@ -555,5 +557,56 @@ describe('payment and voiding', () => {
     await expect(
       db.update(invoice).set({ clientDetails: null }).where(eq(invoice.id, id)),
     ).rejects.toThrow()
+  })
+})
+
+describe('activity', () => {
+  const logged = (organizationId: string, id: string) =>
+    listInvoiceEvents(organizationId, id).then((events) =>
+      events.map(({ type, data }) => ({ type, data })),
+    )
+
+  it('logs each change to a sent invoice, oldest first', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createDraft(organizationId, clientId)
+    expect(await listInvoiceEvents(organizationId, id)).toEqual([])
+
+    await markInvoiceSent(organizationId, id)
+    expect(
+      await recordInvoiceEmailed(organizationId, id, 'ada@example.com'),
+    ).toBe(true)
+    await markInvoicePaid(organizationId, id, '2026-10-15')
+    await markInvoiceUnpaid(organizationId, id)
+    await voidInvoice(organizationId, id)
+
+    expect(await logged(organizationId, id)).toEqual([
+      { type: 'sent', data: null },
+      { type: 'emailed', data: { to: 'ada@example.com' } },
+      { type: 'paid', data: { paidOn: '2026-10-15' } },
+      { type: 'unpaid', data: null },
+      { type: 'voided', data: null },
+    ])
+    const [sent] = await listInvoiceEvents(organizationId, id)
+    expect(sent.createdAt).toBeInstanceOf(Date)
+  })
+
+  it('logs nothing when the change is refused', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createDraft(organizationId, clientId)
+
+    // A draft can't be paid, voided or emailed.
+    expect(await markInvoicePaid(organizationId, id, '2026-10-15')).toBe(false)
+    expect(await voidInvoice(organizationId, id)).toBe(false)
+    expect(
+      await recordInvoiceEmailed(organizationId, id, 'ada@example.com'),
+    ).toBe(false)
+    expect(await listInvoiceEvents(organizationId, id)).toEqual([])
+
+    await markInvoiceSent(organizationId, id)
+    expect(await markInvoiceSent(organizationId, id)).toBeUndefined()
+    expect(await markInvoiceUnpaid(organizationId, id)).toBe(false)
+    expect(await logged(organizationId, id)).toEqual([
+      { type: 'sent', data: null },
+    ])
   })
 })

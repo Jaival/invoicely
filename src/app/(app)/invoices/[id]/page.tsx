@@ -1,7 +1,7 @@
 import { InvoiceForm } from '@/components/invoices/invoice-form'
 import { InvoiceView } from '@/components/invoices/invoice-view'
 import { listClients } from '@/lib/clients/queries'
-import { getInvoice } from '@/lib/invoices/queries'
+import { getInvoice, listInvoiceEvents } from '@/lib/invoices/queries'
 import { formatAmount, formatQuantity, formatRate } from '@/lib/money'
 import { getBusinessProfile } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
@@ -28,9 +28,16 @@ export default async function InvoicePage({
   if (!invoice) notFound()
 
   if (invoice.status !== 'draft') {
-    const profile = await getBusinessProfile(organizationId)
+    const [profile, events] = await Promise.all([
+      getBusinessProfile(organizationId),
+      listInvoiceEvents(organizationId, invoice.id),
+    ])
     return (
-      <InvoiceView invoice={invoice} timeZone={profile?.timeZone ?? 'UTC'} />
+      <InvoiceView
+        invoice={invoice}
+        events={events}
+        timeZone={profile?.timeZone ?? 'UTC'}
+      />
     )
   }
 

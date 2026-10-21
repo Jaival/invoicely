@@ -50,6 +50,13 @@
       "when": 1792607363607,
       "tag": "0006_invoice_public_token",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792619522691,
+      "tag": "0007_invoice_events",
+      "breakpoints": true
     }
   ]
 }

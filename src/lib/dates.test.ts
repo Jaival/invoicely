@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDays, formatDate, isTimeZone, timeZoneLabel, today } from './dates'
+import {
+  addDays,
+  formatDate,
+  formatDateTime,
+  isTimeZone,
+  timeZoneLabel,
+  today,
+} from './dates'
 
 describe('dates', () => {
   it('gives today as a calendar date, in UTC by default', () => {
@@ -29,6 +36,16 @@ describe('dates', () => {
   it('formats without shifting the day', () => {
     expect(formatDate('2026-10-01')).toBe('Oct 1, 2026')
     expect(formatDate('2026-10-01', 'de-DE')).toBe('01.10.2026')
+  })
+
+  it('formats a moment as the clock read in a time zone', () => {
+    const moment = new Date('2026-10-20T22:30:00Z')
+    // ICU puts a narrow no-break space before AM/PM.
+    const plain = (text: string) => text.replace(/\s/g, ' ')
+    expect(plain(formatDateTime(moment))).toBe('Oct 20, 2026, 10:30 PM')
+    expect(plain(formatDateTime(moment, 'Europe/Berlin'))).toBe(
+      'Oct 21, 2026, 12:30 AM',
+    )
   })
 
   it('recognises IANA time zones', () => {
