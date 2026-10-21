@@ -2,20 +2,17 @@ import { BusinessProfileForm } from '@/components/settings/business-profile-form
 import { env } from '@/env/server'
 import { timeZoneOptions } from '@/lib/locale-data'
 import { getActiveOrganization, getBusinessProfile } from '@/lib/organization'
-import { requireSession } from '@/lib/session'
+import { requireOrganizationId } from '@/lib/session'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Business' }
 
 export default async function BusinessSettingsPage() {
-  const { session } = await requireSession()
-  const organizationId = session.activeOrganizationId
-  const [activeOrganization, profile] = organizationId
-    ? await Promise.all([
-        getActiveOrganization(organizationId),
-        getBusinessProfile(organizationId),
-      ])
-    : []
+  const organizationId = await requireOrganizationId()
+  const [activeOrganization, profile] = await Promise.all([
+    getActiveOrganization(organizationId),
+    getBusinessProfile(organizationId),
+  ])
 
   return (
     <BusinessProfileForm
