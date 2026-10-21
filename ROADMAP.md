@@ -66,7 +66,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Line items: description, quantity, unit price, tax %, discount
 - [x] Money utilities in minor units with full unit-test coverage (rounding, tax, discounts, totals)
 - [x] Status lifecycle: draft → sent → paid / overdue / void (partially paid comes with payments in Phase 4)
-- [ ] Invoice list with filters, search, and sort
+- [x] Invoice list with filters, search, and sort
 - [ ] Every query scoped by organization (tenant isolation tests)
 
 ## Phase 3 — PDF & email delivery (2 weeks)

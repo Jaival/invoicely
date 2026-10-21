@@ -1,11 +1,14 @@
 import { db } from '@/db'
 import { client, invoice, invoiceCounter } from '@/db/schema'
+import type { SortDirection, SortKey } from '@/lib/invoices/list'
+import type { DisplayStatus } from '@/lib/invoices/status'
 import { createClient, createOrganization } from '@/test/organizations'
 import { eq } from 'drizzle-orm'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { describe, expect, it } from 'vitest'
 
 import {
+  countInvoicesByStatus,
   createInvoice,
   deleteDraft,
   getInvoice,
@@ -17,6 +20,9 @@ import {
   voidInvoice,
   type InvoiceValues,
 } from './queries'
+
+// The business's today in these tests.
+const TODAY = '2026-10-21'
 
 async function setUp(invoicePrefix?: string) {
   const organizationId = await createOrganization(invoicePrefix)
@@ -164,7 +170,7 @@ describe('listInvoices', () => {
     const newer = await createDraft(organizationId, clientId)
     await markInvoiceSent(organizationId, older)
 
-    expect(await listInvoices(organizationId)).toEqual([
+    expect(await listInvoices(organizationId, TODAY)).toEqual([
       expect.objectContaining({
         id: newer,
         number: null,
@@ -178,6 +184,160 @@ describe('listInvoices', () => {
         status: 'sent',
       }),
     ])
+  })
+
+  // One invoice in each status, across two clients:
+  //   INV-0001 Ada,     sent, due Oct 31  €100
+  //   INV-0002 Babbage, sent, due Oct 10  €300 (overdue on TODAY)
+  //   INV-0003 Ada,     paid              €50
+  //   INV-0004 Babbage, void              €200
+  //   draft    Babbage                    €400
+  async function oneOfEach() {
+    const organizationId = await createOrganization()
+    const [ada, babbage] = await db
+      .insert(client)
+      .values([
+        { organizationId, name: 'ada Analytics' },
+        { organizationId, name: 'Babbage & Co' },
+      ])
+      .returning({ id: client.id })
+    const create = async (
+      clientId: string,
+      euros: number,
+      dueDate = '2026-10-31',
+    ) => {
+      const id = await createInvoice(organizationId, {
+        ...values(clientId),
+        dueDate,
+        lines: [
+          {
+            description: 'Work',
+            quantity: 1000,
+            unitPrice: euros * 100,
+            taxRate: 0,
+            discountRate: 0,
+          },
+        ],
+      })
+      return id!
+    }
+    const send = async (id: string) => {
+      await markInvoiceSent(organizationId, id)
+      return id
+    }
+
+    const sent = await send(await create(ada.id, 100))
+    const overdue = await send(await create(babbage.id, 300, '2026-10-10'))
+    const paid = await send(await create(ada.id, 50))
+    await markInvoicePaid(organizationId, paid, '2026-10-15')
+    const voided = await send(await create(babbage.id, 200))
+    await voidInvoice(organizationId, voided)
+    const draft = await create(babbage.id, 400)
+    return { organizationId, sent, overdue, paid, voided, draft }
+  }
+
+  const ids = (rows: { id: string }[]) => rows.map((row) => row.id)
+
+  it('filters by status, working out overdue from the business’s today', async () => {
+    const all = await oneOfEach()
+    const list = (status: DisplayStatus, today = TODAY) =>
+      listInvoices(all.organizationId, today, { status }).then(ids)
+
+    expect(await list('draft')).toEqual([all.draft])
+    expect(await list('sent')).toEqual([all.sent])
+    expect(await list('overdue')).toEqual([all.overdue])
+    expect(await list('paid')).toEqual([all.paid])
+    expect(await list('void')).toEqual([all.voided])
+    // Before its due date, the overdue one was just sent.
+    expect(await list('sent', '2026-10-05')).toEqual([all.overdue, all.sent])
+    expect(await list('overdue', '2026-10-05')).toEqual([])
+  })
+
+  it('searches numbers and client names, ignoring case', async () => {
+    const all = await oneOfEach()
+    const search = (term: string) =>
+      listInvoices(all.organizationId, TODAY, { search: term }).then(ids)
+
+    expect(await search('BABBAGE')).toEqual([
+      all.draft,
+      all.voided,
+      all.overdue,
+    ])
+    expect(await search('inv-0003')).toEqual([all.paid])
+    expect(await search('Ada a')).toEqual([all.paid, all.sent])
+    // Wildcards are matched literally.
+    expect(await search('%')).toEqual([])
+    expect(await search('INV_0001')).toEqual([])
+  })
+
+  it('combines search and status', async () => {
+    const all = await oneOfEach()
+    expect(
+      await listInvoices(all.organizationId, TODAY, {
+        search: 'babbage',
+        status: 'overdue',
+      }).then(ids),
+    ).toEqual([all.overdue])
+  })
+
+  it('sorts by each column, both ways', async () => {
+    const all = await oneOfEach()
+    const sorted = (sort: SortKey, dir: SortDirection) =>
+      listInvoices(all.organizationId, TODAY, { sort, dir }).then(ids)
+
+    // Drafts have no number, so they come last either way.
+    expect(await sorted('number', 'asc')).toEqual([
+      all.sent,
+      all.overdue,
+      all.paid,
+      all.voided,
+      all.draft,
+    ])
+    expect(await sorted('number', 'desc')).toEqual([
+      all.voided,
+      all.paid,
+      all.overdue,
+      all.sent,
+      all.draft,
+    ])
+    // Ignoring case: "ada Analytics" before "Babbage & Co", newest first
+    // within each.
+    expect(await sorted('client', 'asc')).toEqual([
+      all.paid,
+      all.sent,
+      all.draft,
+      all.voided,
+      all.overdue,
+    ])
+    expect(await sorted('total', 'desc')).toEqual([
+      all.draft,
+      all.overdue,
+      all.voided,
+      all.sent,
+      all.paid,
+    ])
+    expect(await sorted('due', 'asc')).toEqual([
+      all.overdue,
+      all.draft,
+      all.voided,
+      all.paid,
+      all.sent,
+    ])
+  })
+
+  it('counts the matching invoices in each status', async () => {
+    const all = await oneOfEach()
+
+    expect(await countInvoicesByStatus(all.organizationId, TODAY)).toEqual({
+      draft: 1,
+      sent: 1,
+      overdue: 1,
+      paid: 1,
+      void: 1,
+    })
+    expect(
+      await countInvoicesByStatus(all.organizationId, TODAY, 'babbage'),
+    ).toEqual({ draft: 1, overdue: 1, void: 1 })
   })
 })
 
@@ -294,7 +454,7 @@ describe('sending', () => {
       name: 'Test business',
       logoUrl: null,
     })
-    const [listed] = await listInvoices(organizationId)
+    const [listed] = await listInvoices(organizationId, TODAY)
     expect(listed.clientName).toBe('Test client')
   })
 
@@ -415,7 +575,10 @@ describe('privacy', () => {
     const id = await createDraft(mine.organizationId, mine.clientId)
 
     expect(await getInvoice(theirs.organizationId, id)).toBeUndefined()
-    expect(await listInvoices(theirs.organizationId)).toEqual([])
+    expect(await listInvoices(theirs.organizationId, TODAY)).toEqual([])
+    expect(await countInvoicesByStatus(theirs.organizationId, TODAY)).toEqual(
+      {},
+    )
     expect(
       await updateDraft(theirs.organizationId, id, values(theirs.clientId)),
     ).toBe(false)
