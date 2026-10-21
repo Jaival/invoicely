@@ -259,6 +259,22 @@ describe('listInvoices', () => {
     expect(await list('overdue', '2026-10-05')).toEqual([])
   })
 
+  it('lists a page at a time', async () => {
+    const all = await oneOfEach()
+    const page = (offset: number) =>
+      listInvoices(all.organizationId, TODAY, {
+        sort: 'number',
+        dir: 'asc',
+        limit: 2,
+        offset,
+      }).then(ids)
+
+    expect(await page(0)).toEqual([all.sent, all.overdue])
+    expect(await page(2)).toEqual([all.paid, all.voided])
+    expect(await page(4)).toEqual([all.draft])
+    expect(await page(6)).toEqual([])
+  })
+
   it('filters by several statuses at once', async () => {
     const all = await oneOfEach()
     expect(

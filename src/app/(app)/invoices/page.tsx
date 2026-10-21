@@ -28,6 +28,8 @@ import {
   listHref,
   listOrder,
   listTabs,
+  PAGE_SIZE,
+  pageNumbers,
   parseListOptions,
   sortHref,
   viewStatuses,
@@ -49,6 +51,8 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Plus,
   Search,
@@ -85,6 +89,8 @@ export default async function InvoicesPage({
       search: options.search,
       statuses: viewStatuses[options.view],
       ...listOrder(options),
+      limit: PAGE_SIZE,
+      offset: (options.page - 1) * PAGE_SIZE,
     }),
     countInvoicesByStatus(organizationId, today, options.search),
     options.view === 'open' ? outstandingTotals(organizationId, today) : [],
@@ -264,6 +270,17 @@ export default async function InvoicesPage({
             </Table>
           </div>
         </>
+      ) : options.page > 1 ? (
+        // Past the last page, e.g. from an old link.
+        <p className="text-muted-foreground">
+          There are no invoices on this page.{' '}
+          <Link
+            href={listHref(options, { page: 1 })}
+            className="text-foreground underline"
+          >
+            Go to the first page
+          </Link>
+        </p>
       ) : (
         <p className="text-muted-foreground">
           {options.view === 'open' && !options.search
@@ -277,7 +294,97 @@ export default async function InvoicesPage({
           </Link>
         </p>
       )}
+      {invoices.length > 0 && viewCount(options.view) > PAGE_SIZE && (
+        <Pages options={options} count={viewCount(options.view)} />
+      )}
     </>
+  )
+}
+
+// Numbered pages of the list: where this page is in it, and links to the
+// others. On a phone, just the previous and next pages.
+function Pages({
+  options,
+  count,
+}: {
+  options: InvoiceListOptions
+  count: number
+}) {
+  const { page } = options
+  const last = Math.ceil(count / PAGE_SIZE)
+  const to = (target: number) => listHref(options, { page: target })
+
+  return (
+    <nav
+      aria-label="Pages"
+      className="flex flex-wrap items-center justify-between gap-3 text-sm"
+    >
+      <p className="text-muted-foreground tabular-nums">
+        {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of{' '}
+        {count}
+      </p>
+      <div className="flex items-center gap-1">
+        <StepLink href={page > 1 ? to(page - 1) : undefined} rel="prev">
+          <ChevronLeft />
+          Previous
+        </StepLink>
+        <div className="hidden items-center gap-1 sm:flex">
+          {pageNumbers(page, last).map((number, i) =>
+            number === 'gap' ? (
+              <span key={`gap-${i}`} aria-hidden className="px-1">
+                …
+              </span>
+            ) : (
+              <Button
+                key={number}
+                variant={number === page ? 'secondary' : 'ghost'}
+                size="sm"
+                className="min-w-8 tabular-nums"
+                asChild
+              >
+                <Link
+                  href={to(number)}
+                  aria-label={`Page ${number}`}
+                  aria-current={number === page ? 'page' : undefined}
+                >
+                  {number}
+                </Link>
+              </Button>
+            ),
+          )}
+        </div>
+        <StepLink href={page < last ? to(page + 1) : undefined} rel="next">
+          Next
+          <ChevronRight />
+        </StepLink>
+      </div>
+    </nav>
+  )
+}
+
+// Previous or Next; disabled at either end.
+function StepLink({
+  href,
+  rel,
+  children,
+}: {
+  href?: string
+  rel: 'prev' | 'next'
+  children: React.ReactNode
+}) {
+  if (!href) {
+    return (
+      <Button variant="ghost" size="sm" disabled>
+        {children}
+      </Button>
+    )
+  }
+  return (
+    <Button variant="ghost" size="sm" asChild>
+      <Link href={href} rel={rel}>
+        {children}
+      </Link>
+    </Button>
   )
 }
 

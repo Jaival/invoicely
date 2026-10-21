@@ -322,6 +322,14 @@ test('search, filter and sort the invoice list', async ({ page }) => {
     .click()
   await expect(rows.first()).toContainText('INV-0002')
   await expect(rows.last()).toContainText('Draft')
+
+  // Pages of 50: one page needs no page links, and a page past the end
+  // points back to the first.
+  await expect(page.getByRole('navigation', { name: 'Pages' })).toBeHidden()
+  await page.goto('/invoices?status=all&page=2')
+  await page.getByRole('link', { name: 'Go to the first page' }).click()
+  await expect(page).toHaveURL('/invoices?status=all')
+  await expect(rows).toHaveCount(3)
 })
 
 test('act on invoices from the list', async ({ page }) => {

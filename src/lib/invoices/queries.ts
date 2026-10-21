@@ -62,6 +62,9 @@ export type ListFilters = {
   // Newest first when unset.
   sort?: SortKey
   dir?: SortDirection
+  // One page of the list; all of it when unset.
+  limit?: number
+  offset?: number
 }
 
 // The client's name as printed once sent; their current name for drafts.
@@ -93,7 +96,7 @@ function matching(organizationId: string, search = '') {
 export async function listInvoices(
   organizationId: string,
   today: string,
-  { search, statuses, sort, dir = 'desc' }: ListFilters = {},
+  { search, statuses, sort, dir = 'desc', limit, offset = 0 }: ListFilters = {},
 ) {
   // From a fixed pair of keywords, never user input.
   const direction = sql.raw(dir === 'asc' ? 'asc' : 'desc')
@@ -111,7 +114,7 @@ export async function listInvoices(
     total: [asc(invoice.currency), sql`${invoice.total} ${direction}`],
   }
 
-  return db
+  const query = db
     .select({
       id: invoice.id,
       number: invoice.number,
@@ -135,8 +138,11 @@ export async function listInvoices(
     .orderBy(
       ...(sort ? orderings[sort] : []),
       desc(invoice.createdAt),
+      // Last, so the order is total and pages never repeat or skip a row.
       desc(invoice.id),
     )
+    .$dynamic()
+  return limit === undefined ? query : query.limit(limit).offset(offset)
 }
 
 // How many invoices the search matches in each status, for the status
