@@ -1,5 +1,6 @@
 import { BusinessProfileForm } from '@/components/settings/business-profile-form'
 import { env } from '@/env/server'
+import { timeZoneOptions } from '@/lib/locale-data'
 import { getActiveOrganization, getBusinessProfile } from '@/lib/organization'
 import { requireSession } from '@/lib/session'
 import type { Metadata } from 'next'
@@ -31,7 +32,10 @@ export default async function BusinessSettingsPage() {
         country: profile?.country ?? '',
         defaultCurrency: profile?.defaultCurrency ?? 'USD',
         invoicePrefix: profile?.invoicePrefix ?? 'INV',
+        // Blank until chosen; the form suggests the browser's.
+        timeZone: profile?.timeZone ?? '',
       }}
+      timeZones={timeZoneOptions()}
       logoUrl={profile?.logoUrl ?? null}
       logoUploadEnabled={!!env.BLOB_READ_WRITE_TOKEN}
     />

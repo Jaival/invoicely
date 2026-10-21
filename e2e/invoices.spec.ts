@@ -151,6 +151,35 @@ test('invalid fields are flagged and keep what was typed', async ({ page }) => {
   await expect(page).toHaveURL('/invoices/new')
 })
 
+test.describe('in Tokyo', () => {
+  test.use({ timezoneId: 'Asia/Tokyo' })
+
+  test('new invoices are dated today where the business is', async ({
+    page,
+  }) => {
+    await signUp(page)
+    await page.goto('/settings/business')
+    // Suggests the browser's time zone until one is saved.
+    const timeZone = page.getByRole('combobox', { name: 'Time zone' })
+    await expect(timeZone).toHaveText('Asia/Tokyo')
+
+    // UTC+14, so its date is a day ahead of UTC's for most of the day.
+    await timeZone.click()
+    await page.getByRole('option', { name: 'Pacific/Kiritimati' }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText('Business profile saved')).toBeVisible()
+    await page.reload()
+    await expect(timeZone).toHaveText('Pacific/Kiritimati')
+
+    await addClient(page, 'Faraday Labs')
+    await page.goto('/invoices/new')
+    const kiritimatiToday = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Pacific/Kiritimati',
+    }).format(new Date())
+    await expect(page.getByLabel('Issue date')).toHaveValue(kiritimatiToday)
+  })
+})
+
 test('invoices are private to their business', async ({ page, browser }) => {
   const owner = page
   await signUp(owner, 'Owner')

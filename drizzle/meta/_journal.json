@@ -29,6 +29,13 @@
       "when": 1792531297648,
       "tag": "0003_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792577610250,
+      "tag": "0004_business_time_zone",
+      "breakpoints": true
     }
   ]
 }

@@ -30,23 +30,44 @@ import {
   LOGO_MAX_BYTES,
   type BusinessProfileInput,
 } from '@/lib/business-profile'
-import { countries, currencies } from '@/lib/locale-data'
+import { timeZoneLabel } from '@/lib/dates'
+import { countries, currencies, type Option } from '@/lib/locale-data'
 import { ImageIcon, Loader2 } from 'lucide-react'
 import Image from 'next/image'
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import { toast } from 'sonner'
 
 type BusinessProfileFormProps = {
   profile: BusinessProfileInput
   logoUrl: string | null
   logoUploadEnabled: boolean
+  timeZones: Option[]
 }
+
+// The browser's time zone, once hydrated; blank while rendering on the
+// server, which can't know it.
+const noSubscription = () => () => {}
+const useBrowserTimeZone = () =>
+  useSyncExternalStore(
+    noSubscription,
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    () => '',
+  )
 
 export function BusinessProfileForm({
   profile,
   logoUrl,
   logoUploadEnabled,
+  timeZones,
 }: BusinessProfileFormProps) {
+  const browserTimeZone = useBrowserTimeZone()
+  const timeZone = profile.timeZone || browserTimeZone
+  // Runtimes can name a zone differently (Asia/Kolkata or Asia/Calcutta), so
+  // offer the browser's even if the server's list lacks it.
+  const timeZoneChoices =
+    !timeZone || timeZones.some((option) => option.code === timeZone)
+      ? timeZones
+      : [{ code: timeZone, name: timeZoneLabel(timeZone) }, ...timeZones]
   const [state, setState] = useState<BusinessProfileState>({ status: 'idle' })
   const [pending, startTransition] = useTransition()
   const logoInput = useRef<HTMLInputElement>(null)
@@ -272,6 +293,17 @@ export function BusinessProfileForm({
                     className="uppercase"
                     maxLength={10}
                     required
+                  />
+                  <SelectField
+                    // Remounts with the browser's zone once it's known.
+                    key={timeZone}
+                    name="timeZone"
+                    label="Time zone"
+                    placeholder="Select a time zone"
+                    options={timeZoneChoices}
+                    defaultValue={timeZone}
+                    error={errorFor('timeZone')}
+                    description="Your day starts at midnight here: new invoices are dated today, and invoices become overdue after their due date."
                   />
                 </div>
               </FieldGroup>

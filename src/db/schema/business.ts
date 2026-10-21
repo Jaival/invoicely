@@ -27,6 +27,10 @@ export const businessProfile = pgTable(
     // ISO 4217, e.g. "EUR"
     defaultCurrency: text().notNull().default('USD'),
     invoicePrefix: text().notNull().default('INV'),
+    // IANA, e.g. "Europe/Berlin". Decides when a day starts for the
+    // business, for default issue dates and overdue invoices. Unset means
+    // UTC.
+    timeZone: text(),
     ...timestamps,
   },
   (table) => [
