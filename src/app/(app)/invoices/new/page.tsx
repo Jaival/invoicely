@@ -53,7 +53,7 @@ export default async function NewInvoicePage() {
     )
   }
 
-  const issueDate = today()
+  const issueDate = today(profile?.timeZone ?? undefined)
   return (
     <div className="max-w-4xl">
       <InvoiceForm

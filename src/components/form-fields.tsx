@@ -55,6 +55,7 @@ type SelectFieldProps = {
   defaultValue: string
   onValueChange?: (value: string) => void
   showCode?: boolean
+  description?: string
   error?: string
 }
 
@@ -66,6 +67,7 @@ export function SelectField({
   defaultValue,
   onValueChange,
   showCode,
+  description,
   error,
 }: SelectFieldProps) {
   return (
@@ -93,6 +95,7 @@ export function SelectField({
           </SelectGroup>
         </SelectContent>
       </Select>
+      {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError>{error}</FieldError>
     </Field>
   )

@@ -1,3 +1,5 @@
+import { timeZoneLabel } from '@/lib/dates'
+
 // Country and currency pickers. Deliberately short for now; add entries as
 // users need them. Codes are ISO 3166-1 alpha-2 and ISO 4217.
 
@@ -56,3 +58,12 @@ export const currencies: Option[] = [
 
 export const countryCodes = new Set(countries.map((option) => option.code))
 export const currencyCodes = new Set(currencies.map((option) => option.code))
+
+// Every IANA time zone the runtime knows, plus UTC. Built on the server and
+// passed to the form, so the browser renders the server's list.
+export function timeZoneOptions(): Option[] {
+  return ['UTC', ...Intl.supportedValuesOf('timeZone')].map((code) => ({
+    code,
+    name: timeZoneLabel(code),
+  }))
+}
