@@ -174,11 +174,14 @@ export function InvoicePdf({ invoice }: InvoicePdfProps) {
   )
 }
 
+// Called directly: renderToBuffer wants the <Document> element itself.
+export const renderInvoicePdf = (invoice: InvoicePdfProps['invoice']) =>
+  renderToBuffer(InvoicePdf({ invoice }))
+
 // The invoice's PDF as a download named after its number. Only sent
 // invoices have a number and the captured details the PDF prints.
 export async function invoicePdfResponse(invoice: InvoicePdfProps['invoice']) {
-  // Called directly: renderToBuffer wants the <Document> element itself.
-  const pdf = await renderToBuffer(InvoicePdf({ invoice }))
+  const pdf = await renderInvoicePdf(invoice)
   return new Response(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',

@@ -15,9 +15,20 @@ type Email = {
   to: string
   subject: string
   react: React.ReactElement
+  // Where replies go instead of EMAIL_FROM, e.g. the business that billed.
+  replyTo?: string
+  attachments?: { filename: string; content: Buffer }[]
 }
 
-export async function sendEmail({ to, subject, react }: Email) {
+// Resolves to whether the email was handed over for delivery (or written to
+// the outbox). Failures are logged, never thrown.
+export async function sendEmail({
+  to,
+  subject,
+  react,
+  replyTo,
+  attachments,
+}: Email) {
   const [html, text] = await Promise.all([
     render(react),
     render(react, { plainText: true }),
@@ -29,14 +40,24 @@ export async function sendEmail({ to, subject, react }: Email) {
     const file = `${Date.now()}-${crypto.randomUUID()}.json`
     await writeFile(
       path.join(env.EMAIL_OUTBOX_DIR, file),
-      JSON.stringify({ to, subject, html, text }),
+      JSON.stringify({
+        to,
+        subject,
+        replyTo,
+        html,
+        text,
+        attachments: attachments?.map(({ filename, content }) => ({
+          filename,
+          size: content.length,
+        })),
+      }),
     )
-    return
+    return true
   }
 
   if (!resend) {
     log.warn('Email not sent: no RESEND_API_KEY', { subject })
-    return
+    return false
   }
 
   const { error } = await resend.emails.send({
@@ -45,8 +66,12 @@ export async function sendEmail({ to, subject, react }: Email) {
     subject,
     html,
     text,
+    replyTo,
+    attachments,
   })
   if (error) {
     log.error('Could not send email', { subject, error })
+    return false
   }
+  return true
 }
