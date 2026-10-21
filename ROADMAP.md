@@ -73,7 +73,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 
 - [x] Default invoice template with `@react-pdf/renderer`
 - [x] PDF download route
-- [ ] Public, unguessable invoice view link for clients
+- [x] Public, unguessable invoice view link for clients
 - [ ] React Email template: "You have a new invoice" with link + PDF attachment
 - [ ] Send action marks invoice `sent` and records an activity log entry
 - [ ] Print-friendly public view
