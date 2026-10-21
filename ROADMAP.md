@@ -76,7 +76,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Public, unguessable invoice view link for clients
 - [x] React Email template: "You have a new invoice" with link + PDF attachment
 - [x] Send action marks invoice `sent` and records an activity log entry
-- [ ] Print-friendly public view
+- [x] Print-friendly public view
 
 ## Invoice list polish (after Phase 3)
 
