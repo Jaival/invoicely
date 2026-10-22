@@ -30,6 +30,7 @@ export function SettingsNav() {
             className={cn(
               buttonVariants({ variant: active ? 'secondary' : 'ghost' }),
               'justify-start',
+              active && 'brutal:bg-accent brutal:hover:bg-accent',
             )}
           >
             {item.title}

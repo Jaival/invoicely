@@ -287,7 +287,7 @@ export function InvoiceForm({ id, invoice, clients }: InvoiceFormProps) {
                       }
                       error={errorFor(`lines.${index}.discountRate`)}
                     />
-                    <p className="flex justify-between text-sm tabular-nums sm:block sm:h-9 sm:content-center sm:text-right">
+                    <p className="flex justify-between font-figures text-sm tabular-nums sm:block sm:h-9 sm:content-center sm:text-right">
                       <span className="text-muted-foreground sm:sr-only">
                         Amount
                       </span>{' '}

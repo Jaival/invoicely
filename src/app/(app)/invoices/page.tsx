@@ -121,7 +121,7 @@ export default async function InvoicesPage({
     return (
       <>
         {heading}
-        <Empty className="border">
+        <Empty className="panel">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <FileText />
@@ -207,7 +207,7 @@ export default async function InvoicesPage({
             today={today}
             className="sm:hidden"
           />
-          <div className="hidden border sm:block">
+          <div className="hidden panel sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -227,7 +227,7 @@ export default async function InvoicesPage({
                   const status = displayStatus(invoice, today)
                   return (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-figures font-medium">
                         <Link
                           href={`/invoices/${invoice.id}`}
                           className="hover:underline"
@@ -237,7 +237,7 @@ export default async function InvoicesPage({
                       </TableCell>
                       <TableCell>{invoice.clientName}</TableCell>
                       {showIssued && (
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="font-figures text-muted-foreground">
                           {formatDate(invoice.issueDate)}
                         </TableCell>
                       )}
@@ -250,7 +250,7 @@ export default async function InvoicesPage({
                       >
                         {dueLabel(invoice, today) ?? '—'}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right font-figures tabular-nums">
                         {formatMoney(invoice.total, invoice.currency)}
                       </TableCell>
                       <TableCell>
@@ -319,7 +319,7 @@ function Pages({
       aria-label="Pages"
       className="flex flex-wrap items-center justify-between gap-3 text-sm"
     >
-      <p className="text-muted-foreground tabular-nums">
+      <p className="font-figures text-muted-foreground tabular-nums">
         {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of{' '}
         {count}
       </p>
@@ -339,7 +339,7 @@ function Pages({
                 key={number}
                 variant={number === page ? 'secondary' : 'ghost'}
                 size="sm"
-                className="min-w-8 tabular-nums"
+                className="min-w-8 font-figures tabular-nums"
                 asChild
               >
                 <Link
@@ -405,17 +405,17 @@ function OwedTotals({
 
   return (
     <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
-      <div className="border p-4">
+      <div className="panel p-4">
         <dt className="text-sm text-muted-foreground">Outstanding</dt>
-        <dd className="mt-1 text-xl font-semibold tabular-nums">
+        <dd className="mt-1 font-figures text-xl font-semibold tabular-nums">
           {amounts(owed, 'outstanding')}
         </dd>
       </div>
-      <div className="border p-4">
+      <div className="panel p-4">
         <dt className="text-sm text-muted-foreground">Overdue</dt>
         <dd
           className={cn(
-            'mt-1 text-xl font-semibold tabular-nums',
+            'mt-1 font-figures text-xl font-semibold tabular-nums',
             overdue.length > 0 && 'text-destructive',
           )}
         >
@@ -450,7 +450,9 @@ function ViewLink({
         aria-current={current ? 'true' : undefined}
       >
         {children}
-        <span className="text-muted-foreground tabular-nums">{count}</span>
+        <span className="font-figures text-muted-foreground tabular-nums">
+          {count}
+        </span>
       </Link>
     </Button>
   )

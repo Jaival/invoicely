@@ -30,7 +30,7 @@ export default async function NewInvoicePage() {
 
   if (!clients.length) {
     return (
-      <Empty className="max-w-4xl border">
+      <Empty className="max-w-4xl panel">
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <Users />

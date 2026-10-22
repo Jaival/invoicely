@@ -21,7 +21,7 @@ export function InvoiceCards({
   className,
 }: InvoiceCardsProps) {
   return (
-    <ul aria-label="Invoices" className={cn('divide-y border', className)}>
+    <ul aria-label="Invoices" className={cn('divide-y panel', className)}>
       {invoices.map((invoice) => {
         const status = displayStatus(invoice, today)
         const due = dueLabel(invoice, today)
@@ -36,13 +36,15 @@ export function InvoiceCards({
                 >
                   {invoice.clientName}
                 </Link>
-                <span className="tabular-nums">
+                <span className="font-figures tabular-nums">
                   {formatMoney(invoice.total, invoice.currency)}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="truncate text-muted-foreground">
-                  {invoice.number ?? 'Draft'}
+                  <span className="font-figures">
+                    {invoice.number ?? 'Draft'}
+                  </span>
                   {due && (
                     <>
                       {' · '}

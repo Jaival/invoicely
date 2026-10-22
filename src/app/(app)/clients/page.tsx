@@ -52,7 +52,7 @@ export default async function ClientsPage({
     return (
       <>
         {heading}
-        <Empty className="border">
+        <Empty className="panel">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Users />
@@ -102,7 +102,7 @@ export default async function ClientsPage({
         </InputGroup>
       </Form>
       {clients.length ? (
-        <div className="border">
+        <div className="panel">
           <Table>
             <TableHeader>
               <TableRow>

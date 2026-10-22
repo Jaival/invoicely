@@ -210,6 +210,16 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* A bordered box on the page, e.g. around a table. Brutal lifts it. */
+@utility panel {
+  border-width: 1px;
+  @variant brutal {
+    border-width: 2px;
+    background-color: var(--card);
+    box-shadow: 4px 4px 0 0 var(--foreground);
+  }
+}
+
 @utility container {
   margin-inline: auto;
   padding-inline: 2rem;
