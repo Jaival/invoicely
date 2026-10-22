@@ -439,7 +439,12 @@ function ViewLink({
 }) {
   const current = options.view === view
   return (
-    <Button variant={current ? 'secondary' : 'ghost'} size="sm" asChild>
+    <Button
+      variant={current ? 'secondary' : 'ghost'}
+      size="sm"
+      className={cn(current && 'brutal:bg-accent brutal:hover:bg-accent')}
+      asChild
+    >
       <Link
         href={listHref(options, { view })}
         aria-current={current ? 'true' : undefined}
