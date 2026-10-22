@@ -65,6 +65,7 @@ export function InvoiceRowMenu({
           <Button
             variant="ghost"
             size="icon-sm"
+            className="brutal:border-2 brutal:border-foreground brutal:bg-card"
             aria-label={`Actions for ${number ?? `the draft for ${clientName}`}`}
           >
             <MoreHorizontal />

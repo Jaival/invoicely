@@ -406,17 +406,32 @@ function OwedTotals({
   return (
     <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
       <div className="panel p-4">
-        <dt className="text-sm text-muted-foreground">Outstanding</dt>
+        <dt className={statLabel}>Outstanding</dt>
         <dd className="mt-1 font-figures text-xl font-semibold tabular-nums">
           {amounts(owed, 'outstanding')}
         </dd>
       </div>
-      <div className="panel p-4">
-        <dt className="text-sm text-muted-foreground">Overdue</dt>
+      <div
+        className={cn(
+          'panel p-4',
+          // Brutal fills the box with the overdue color instead.
+          overdue.length > 0 &&
+            'brutal:bg-status-overdue brutal:text-status-foreground',
+        )}
+      >
+        <dt
+          className={cn(
+            statLabel,
+            overdue.length > 0 && 'brutal:text-status-foreground',
+          )}
+        >
+          Overdue
+        </dt>
         <dd
           className={cn(
             'mt-1 font-figures text-xl font-semibold tabular-nums',
-            overdue.length > 0 && 'text-destructive',
+            overdue.length > 0 &&
+              'text-destructive brutal:text-status-foreground',
           )}
         >
           {overdue.length > 0 ? amounts(overdue, 'overdue') : 'Nothing'}
@@ -425,6 +440,9 @@ function OwedTotals({
     </dl>
   )
 }
+
+const statLabel =
+  'text-sm text-muted-foreground brutal:text-xs brutal:font-semibold brutal:tracking-wider brutal:uppercase'
 
 function ViewLink({
   options,
@@ -442,9 +460,11 @@ function ViewLink({
     <Button
       variant={current ? 'secondary' : 'ghost'}
       size="sm"
+      // Brutal boxes every tab and highlights the current one.
       className={cn(
-        current &&
-          'brutal:bg-accent brutal:text-accent-foreground brutal:hover:bg-accent',
+        current
+          ? 'brutal:bg-accent brutal:text-accent-foreground brutal:hover:bg-accent'
+          : 'brutal:border-2 brutal:border-foreground brutal:bg-card',
       )}
       asChild
     >
@@ -506,7 +526,10 @@ function SortableHead({
         {children}
         <Icon
           aria-hidden
-          className={cn('size-3.5', !sorted && 'text-muted-foreground/60')}
+          className={cn(
+            'size-3.5',
+            !sorted && 'text-muted-foreground/60 brutal:text-background/60',
+          )}
         />
       </Link>
     </TableHead>
