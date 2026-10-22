@@ -99,9 +99,9 @@ A selectable style next to the current clean look, built so it could become the 
 
 - [x] Style (Clean / Brutal) and palette (Emerald / Sunshine) saved on the account and applied server-side,
       no flash; light/dark mode stays separate, in the browser
-- [ ] Brutal light: 2–3px black borders, hard 4px shadows, buttons that press in (respects reduced motion),
+- [x] Brutal light: 2–3px black borders, hard 4px shadows, buttons that press in (respects reduced motion),
       contrast-checked colors
-- [ ] Palettes: Emerald (emerald actions, mint highlights) and Sunshine (yellow actions, pink highlights),
+- [x] Palettes: Emerald (emerald actions, mint highlights) and Sunshine (yellow actions, pink highlights),
       both with loud status colors (overdue pink, sent blue, paid lime, draft grey)
 - [x] Fonts, loaded only for Brutal: Space Grotesk headings, Inter body, JetBrains Mono for amounts,
       numbers and dates
