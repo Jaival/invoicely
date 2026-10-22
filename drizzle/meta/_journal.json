@@ -57,6 +57,13 @@
       "when": 1792619522691,
       "tag": "0007_invoice_events",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792623806143,
+      "tag": "0008_user_appearance",
+      "breakpoints": true
     }
   ]
 }

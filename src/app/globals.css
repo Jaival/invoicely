@@ -10,6 +10,9 @@
   }
 }
 
+/* Styles only the Brutal style, e.g. `brutal:shadow-brutal`. */
+@custom-variant brutal (&:where([data-style='brutal'], [data-style='brutal'] *));
+
 /*
  * Invoicely theme, built on shadcn/ui tokens.
  * Light: Neutral base. Dark: Slate base. Primary: Emerald in both. Radius 0.
@@ -47,6 +50,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.596 0.145 163.225);
+  --heading: var(--font-inter);
+  --figures: var(--font-inter);
 }
 
 @media screen {
@@ -85,6 +90,61 @@
   }
 }
 
+/*
+ * Brutal style (Neo Brutalism): cream paper, black ink, flat bright colors,
+ * thick borders and hard shadows. Set on <html> with data-style, colors
+ * picked with data-palette. Light only for now: the root layout forces
+ * light mode. Every text color pair here is at least 4.5:1.
+ */
+[data-style='brutal'] {
+  --radius: 0rem;
+  --background: #fffbf0;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  /* Actions: dark ink on the palette's main color. */
+  --primary: #10b981;
+  --primary-foreground: #0a0a0a;
+  --secondary: #ffffff;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f3ecd8;
+  --muted-foreground: #4d4d4d;
+  /* Highlights: hover, selection and the current page. */
+  --accent: #6ee7b7;
+  --accent-foreground: #0a0a0a;
+  /* Dark enough for red text on cream and white text on red. */
+  --destructive: #c81e4a;
+  --border: #0a0a0a;
+  --input: #0a0a0a;
+  --ring: #0a0a0a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #0a0a0a;
+  --sidebar-ring: #0a0a0a;
+  /* Loud invoice statuses, all with dark ink. */
+  --status-overdue: #ff5c8a;
+  --status-sent: #7dd3fc;
+  --status-paid: #b8f35b;
+  --status-draft: #d9d9d9;
+  --heading: var(--font-space-grotesk);
+  --figures: var(--font-jetbrains-mono);
+}
+
+[data-style='brutal'][data-palette='sunshine'] {
+  --background: #fff6dc;
+  --primary: #ffd23f;
+  --muted: #f7e8bd;
+  --muted-foreground: #4a4a4a;
+  --accent: #ff7ab6;
+  --status-sent: #6ea8ff;
+}
+
 @media print {
   /* Beats the color-scheme next-themes sets on <html>. */
   html {
@@ -98,6 +158,16 @@
 
 @theme inline {
   --font-sans: var(--font-inter);
+  /* Headings, and amounts, numbers and dates. Inter unless Brutal. */
+  --font-heading: var(--heading);
+  --font-figures: var(--figures);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-sent: var(--status-sent);
+  --color-status-paid: var(--status-paid);
+  --color-status-draft: var(--status-draft);
+  /* Brutal's hard shadows; buttons drop theirs to press in. */
+  --shadow-brutal: 4px 4px 0 0 var(--foreground);
+  --shadow-brutal-sm: 2px 2px 0 0 var(--foreground);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -150,5 +220,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
   }
 }

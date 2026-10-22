@@ -65,3 +65,29 @@ test('pick a theme on the appearance page', async ({ page }) => {
   await page.getByRole('radio', { name: 'Dark' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
 })
+
+test('pick the Brutal style, saved on the account', async ({ page }) => {
+  await signUp(page)
+  await page.goto('/settings/appearance')
+  const html = page.locator('html')
+  await page.getByRole('radio', { name: 'Dark' }).click()
+
+  // Palettes only color Brutal.
+  await expect(page.getByRole('radio', { name: 'Sunshine' })).toBeDisabled()
+  await page.getByRole('radio', { name: 'Brutal' }).click()
+  await expect(html).toHaveAttribute('data-style', 'brutal')
+  await page.getByRole('radio', { name: 'Sunshine' }).click()
+  await expect(html).toHaveAttribute('data-palette', 'sunshine')
+  // Brutal is light only for now, whatever the theme.
+  await expect(html).toHaveClass(/light/)
+
+  // The server sends it with the page, so it doesn't flash.
+  const response = await page.request.get('/invoices')
+  expect(await response.text()).toMatch(
+    /<html[^>]*data-style="brutal" data-palette="sunshine"/,
+  )
+
+  await page.getByRole('radio', { name: 'Clean' }).click()
+  await expect(html).not.toHaveAttribute('data-style')
+  await expect(html).toHaveClass(/dark/)
+})
