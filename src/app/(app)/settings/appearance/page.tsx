@@ -35,9 +35,8 @@ export default async function AppearanceSettingsPage() {
         <CardHeader>
           <CardTitle>Theme</CardTitle>
           <CardDescription>
-            {appearance.style === 'brutal'
-              ? 'The Brutal style is always light for now. Your choice here applies to the Clean style.'
-              : 'Choose a theme, or follow your device setting. Saved in this browser.'}
+            Choose a theme, or follow your device setting. Saved in this
+            browser.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -442,7 +442,10 @@ function ViewLink({
     <Button
       variant={current ? 'secondary' : 'ghost'}
       size="sm"
-      className={cn(current && 'brutal:bg-accent brutal:hover:bg-accent')}
+      className={cn(
+        current &&
+          'brutal:bg-accent brutal:text-accent-foreground brutal:hover:bg-accent',
+      )}
       asChild
     >
       <Link
@@ -450,7 +453,12 @@ function ViewLink({
         aria-current={current ? 'true' : undefined}
       >
         {children}
-        <span className="font-figures text-muted-foreground tabular-nums">
+        <span
+          className={cn(
+            'font-figures text-muted-foreground tabular-nums',
+            current && 'brutal:text-accent-foreground',
+          )}
+        >
           {count}
         </span>
       </Link>

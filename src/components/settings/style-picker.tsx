@@ -56,8 +56,7 @@ export function StylePicker({ saved }: { saved: Appearance }) {
           ))}
         </ToggleGroup>
         <FieldDescription>
-          Brutal has thick borders, hard shadows and bold colors. It is light
-          only for now.
+          Brutal has thick borders, hard shadows and bold colors.
         </FieldDescription>
       </Field>
       <Field data-disabled={appearance.style === 'clean'}>

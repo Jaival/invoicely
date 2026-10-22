@@ -3,7 +3,8 @@
 
 /*
  * Dark mode is for screens. Paper is white, so pages always print light.
- * Brutal has no dark version yet, so dark mode skips it.
+ * Brutal's dark version is all in its tokens below, so dark: utilities,
+ * which tune Clean's, skip it.
  */
 @custom-variant dark {
   @media screen {
@@ -67,6 +68,7 @@
   --sidebar-ring: oklch(0.596 0.145 163.225);
   --heading: var(--font-inter);
   --figures: var(--font-inter);
+  --destructive-foreground: #ffffff;
 }
 
 @media screen {
@@ -109,8 +111,8 @@
 /*
  * Brutal style (Neo Brutalism): cream paper, black ink, flat bright colors,
  * thick borders and hard shadows. Set on <html> with data-style, colors
- * picked with data-palette. Light only for now: the root layout forces
- * light mode. Every text color pair here is at least 4.5:1.
+ * picked with data-palette; dark mode further down. Every text color pair
+ * here is at least 4.5:1.
  */
 [data-style='brutal'] {
   color-scheme: light;
@@ -149,6 +151,9 @@
   --status-sent: #7dd3fc;
   --status-paid: #b8f35b;
   --status-draft: #d9d9d9;
+  /* Status colors are bright in light and dark, so their text is dark. */
+  --status-foreground: #0a0a0a;
+  --destructive-foreground: #ffffff;
   --heading: var(--font-space-grotesk);
   --figures: var(--font-jetbrains-mono);
 }
@@ -160,6 +165,48 @@
   --muted-foreground: #4a4a4a;
   --accent: #ff7ab6;
   --status-sent: #6ea8ff;
+}
+
+/*
+ * Brutal dark: near-black paper, cream ink, borders and shadows. The
+ * palette's fills stay bright with dark text, as in light.
+ */
+@media screen {
+  .dark[data-style='brutal'],
+  .dark [data-style='brutal'] {
+    color-scheme: dark;
+    --background: #121212;
+    --foreground: #fbf6e9;
+    --card: #1e1e1e;
+    --card-foreground: #fbf6e9;
+    --popover: #1e1e1e;
+    --popover-foreground: #fbf6e9;
+    --secondary: #1e1e1e;
+    --secondary-foreground: #fbf6e9;
+    --muted: #2a2a2a;
+    --muted-foreground: #b8b2a4;
+    /* Light enough for red text on the dark paper, so its text is dark. */
+    --destructive: #ff6b8b;
+    --destructive-foreground: #0a0a0a;
+    --border: #fbf6e9;
+    --input: #fbf6e9;
+    --ring: #fbf6e9;
+    --sidebar: #1e1e1e;
+    --sidebar-foreground: #fbf6e9;
+    --sidebar-border: #fbf6e9;
+    --sidebar-ring: #fbf6e9;
+  }
+
+  .dark[data-style='brutal'][data-palette='sunshine'],
+  .dark [data-style='brutal'][data-palette='sunshine'] {
+    --background: #16130b;
+    --card: #221e14;
+    --popover: #221e14;
+    --secondary: #221e14;
+    --muted: #2e2919;
+    --muted-foreground: #bdb5a0;
+    --sidebar: #221e14;
+  }
 }
 
 @media print {
@@ -186,6 +233,8 @@
   --color-status-sent: var(--status-sent);
   --color-status-paid: var(--status-paid);
   --color-status-draft: var(--status-draft);
+  --color-status-foreground: var(--status-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
   /* Brutal's hard shadows; buttons drop theirs to press in. */
   --shadow-brutal: 4px 4px 0 0 var(--foreground);
   --shadow-brutal-sm: 2px 2px 0 0 var(--foreground);

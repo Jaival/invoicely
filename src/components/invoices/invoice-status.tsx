@@ -20,11 +20,11 @@ const variants = {
 
 // Brutal gives every status its own loud color, all with dark ink.
 const brutalColors: Record<DisplayStatus, string> = {
-  draft: 'brutal:bg-status-draft',
-  sent: 'brutal:bg-status-sent',
-  overdue: 'brutal:bg-status-overdue',
-  paid: 'brutal:bg-status-paid',
-  void: 'brutal:bg-card',
+  draft: 'brutal:bg-status-draft brutal:text-status-foreground',
+  sent: 'brutal:bg-status-sent brutal:text-status-foreground',
+  overdue: 'brutal:bg-status-overdue brutal:text-status-foreground',
+  paid: 'brutal:bg-status-paid brutal:text-status-foreground',
+  void: 'brutal:bg-card brutal:text-foreground',
 }
 
 // Printers drop background colors, which would leave light text on white,
@@ -38,7 +38,6 @@ export function InvoiceStatusBadge({ status }: { status: DisplayStatus }) {
       variant={variants[status]}
       className={cn(
         status === 'void' && 'text-muted-foreground',
-        'brutal:text-foreground',
         brutalColors[status],
         printed,
       )}

@@ -77,8 +77,6 @@ export default async function RootLayout({
           attribute="class"
           defaultTheme="dark"
           enableSystem
-          // Brutal has no dark version yet.
-          forcedTheme={appearance.style === 'brutal' ? 'light' : undefined}
           disableTransitionOnChange
         >
           {children}

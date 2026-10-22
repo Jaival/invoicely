@@ -78,8 +78,12 @@ test('pick the Brutal style, saved on the account', async ({ page }) => {
   await expect(html).toHaveAttribute('data-style', 'brutal')
   await page.getByRole('radio', { name: 'Sunshine' }).click()
   await expect(html).toHaveAttribute('data-palette', 'sunshine')
-  // Brutal is light only for now, whatever the theme.
-  await expect(html).toHaveClass(/light/)
+  // Brutal has a dark version: dark paper, cream ink.
+  await expect(html).toHaveClass(/dark/)
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    'rgb(22, 19, 11)',
+  )
 
   // The server sends it with the page, so it doesn't flash.
   const response = await page.request.get('/invoices')

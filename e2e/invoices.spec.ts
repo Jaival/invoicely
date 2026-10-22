@@ -577,8 +577,9 @@ test("clients see invoices in the business's public style", async ({
   const client = await context.newPage()
   const invoice = client.locator('div[data-style]')
   const download = client.getByRole('link', { name: 'Download PDF' })
-  // Brutal's outline buttons sit on a 4px black shadow.
-  const hardShadow = /rgb\(10, 10, 10\) 4px 4px 0px 0px/
+  // Brutal's outline buttons sit on a hard 4px shadow, black in light mode
+  // and cream in dark.
+  const hardShadow = /\) 4px 4px 0px 0px/
 
   // Clean by default, even for the owner, whose own pages are Brutal.
   await client.goto(link)

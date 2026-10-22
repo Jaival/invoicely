@@ -11,12 +11,11 @@ import { useTheme } from 'next-themes'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  // The Brutal style forces a theme, whatever the user picked.
-  const { theme = 'system', forcedTheme } = useTheme()
+  const { theme = 'system' } = useTheme()
 
   return (
     <Sonner
-      theme={(forcedTheme ?? theme) as ToasterProps['theme']}
+      theme={theme as ToasterProps['theme']}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

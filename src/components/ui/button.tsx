@@ -18,7 +18,7 @@ const buttonVariants = cva(
           pressable,
         ),
         destructive: cn(
-          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40',
+          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 brutal:text-destructive-foreground',
           pressable,
         ),
         outline: cn(
@@ -26,7 +26,7 @@ const buttonVariants = cva(
           pressable,
         ),
         secondary: cn(
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80 brutal:hover:bg-accent',
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80 brutal:hover:bg-accent brutal:hover:text-accent-foreground',
           pressable,
         ),
         ghost:
