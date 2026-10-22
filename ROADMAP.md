@@ -105,7 +105,7 @@ A selectable style next to the current clean look, built so it could become the 
       both with loud status colors (overdue pink, sent blue, paid lime, draft grey)
 - [x] Fonts, loaded only for Brutal: Space Grotesk headings, Inter body, JetBrains Mono for amounts,
       numbers and dates
-- [ ] Core components: button, card, input, badge, table, tabs, menu, dialog; then sidebar, forms, empty states
+- [x] Core components: button, card, input, badge, table, tabs, menu, dialog; then sidebar, forms, empty states
 - [ ] Business setting "Public invoice style: Clean / Match my style" for the public page and the PDF
       (embedded fonts, no shadows); emails stay clean
 - [ ] Brutal dark; until then Brutal + dark falls back to Brutal light
