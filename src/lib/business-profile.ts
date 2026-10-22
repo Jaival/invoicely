@@ -1,3 +1,4 @@
+import { publicStyles } from '@/lib/appearance'
 import { isTimeZone } from '@/lib/dates'
 import { currencyCodes } from '@/lib/locale-data'
 import { address, optionalEmail, optionalText } from '@/lib/validation'
@@ -27,6 +28,7 @@ export const businessProfileSchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z0-9-]{1,10}$/, 'Use 1–10 letters, numbers or hyphens'),
   timeZone: z.string().refine(isTimeZone, 'Pick a time zone'),
+  publicStyle: z.enum(publicStyles, 'Pick a style'),
 })
 
 export type BusinessProfileInput = z.input<typeof businessProfileSchema>

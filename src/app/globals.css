@@ -1,23 +1,38 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* Dark mode is for screens. Paper is white, so pages always print light. */
+/*
+ * Dark mode is for screens. Paper is white, so pages always print light.
+ * Brutal has no dark version yet, so dark mode skips it.
+ */
 @custom-variant dark {
   @media screen {
-    &:is(.dark *) {
+    &:is(.dark *):not(:where([data-style='brutal'], [data-style='brutal'] *)) {
       @slot;
     }
   }
 }
 
-/* Styles only the Brutal style, e.g. `brutal:shadow-brutal`. */
-@custom-variant brutal (&:where([data-style='brutal'], [data-style='brutal'] *));
+/*
+ * Styles only the Brutal style, e.g. `brutal:shadow-brutal`. A page can
+ * set its own style on an element, like the public invoice does for the
+ * business's choice, and a Clean element inside Brutal stays Clean.
+ */
+@custom-variant brutal {
+  &:where([data-style='brutal'], [data-style='brutal'] *):not(
+      :where([data-style='clean'], [data-style='clean'] *)
+    ) {
+    @slot;
+  }
+}
 
 /*
  * Invoicely theme, built on shadcn/ui tokens.
  * Light: Neutral base. Dark: Slate base. Primary: Emerald in both. Radius 0.
+ * Also the Clean style on an element inside Brutal.
  */
-:root {
+:root,
+[data-style='clean'] {
   --radius: 0rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -55,7 +70,8 @@
 }
 
 @media screen {
-  .dark {
+  .dark,
+  .dark [data-style='clean'] {
     --background: oklch(0.129 0.042 264.695);
     --foreground: oklch(0.984 0.003 247.858);
     --card: oklch(0.208 0.042 265.755);
@@ -97,6 +113,7 @@
  * light mode. Every text color pair here is at least 4.5:1.
  */
 [data-style='brutal'] {
+  color-scheme: light;
   --radius: 0rem;
   --background: #fffbf0;
   --foreground: #0a0a0a;
@@ -149,6 +166,10 @@
   /* Beats the color-scheme next-themes sets on <html>. */
   html {
     color-scheme: light !important;
+  }
+  /* Brutal's hard shadows are for screens. */
+  [data-style='brutal'] * {
+    box-shadow: none !important;
   }
 }
 

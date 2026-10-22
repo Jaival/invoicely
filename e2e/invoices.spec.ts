@@ -541,3 +541,72 @@ test('sending emails the client a link they can open signed out', async ({
   expect(pdf.headers()['content-type']).toBe('application/pdf')
   await context.close()
 })
+
+test("clients see invoices in the business's public style", async ({
+  page,
+  browser,
+}) => {
+  await signUp(page)
+  await page.goto('/settings/appearance')
+  await page.getByRole('radio', { name: 'Brutal' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-style', 'brutal')
+
+  const clientEmail = `client-${crypto.randomUUID()}@example.com`
+  await page.goto('/clients/new')
+  await page.getByLabel('Name').fill('Lovelace Ltd')
+  await page.getByLabel('Email').fill(clientEmail)
+  await page.getByRole('button', { name: 'Add client' }).click()
+  await expect(page).toHaveURL('/clients')
+  await page.goto('/invoices/new')
+  await fillLine(page, 1, {
+    description: 'Audit',
+    quantity: '1',
+    unitPrice: '50',
+  })
+  await page.getByRole('button', { name: 'Mark as sent' }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Mark as sent' })
+    .click()
+  await expect(page.getByText(`INV-0001 sent to ${clientEmail}`)).toBeVisible()
+  const link = await linkFromEmail(clientEmail, /^Invoice INV-0001 from /)
+
+  const context = await browser.newContext({
+    extraHTTPHeaders: { 'x-forwarded-for': randomAddress() },
+  })
+  const client = await context.newPage()
+  const invoice = client.locator('div[data-style]')
+  const download = client.getByRole('link', { name: 'Download PDF' })
+  // Brutal's outline buttons sit on a 4px black shadow.
+  const hardShadow = /rgb\(10, 10, 10\) 4px 4px 0px 0px/
+
+  // Clean by default, even for the owner, whose own pages are Brutal.
+  await client.goto(link)
+  await expect(invoice).toHaveAttribute('data-style', 'clean')
+  await page.goto(link)
+  await expect(page.locator('html')).toHaveAttribute('data-style', 'brutal')
+  await expect(page.locator('div[data-style]')).toHaveAttribute(
+    'data-style',
+    'clean',
+  )
+  await expect(page.getByRole('link', { name: 'Download PDF' })).not.toHaveCSS(
+    'box-shadow',
+    hardShadow,
+  )
+
+  // Matching the owner's style: Brutal, with its hard shadows.
+  await page.goto('/settings/business')
+  await page.getByRole('combobox', { name: 'Public invoice style' }).click()
+  await page.getByRole('option', { name: 'Match my style' }).click()
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Business profile saved')).toBeVisible()
+
+  await client.reload()
+  await expect(invoice).toHaveAttribute('data-style', 'brutal')
+  await expect(invoice).toHaveAttribute('data-palette', 'emerald')
+  await expect(download).toHaveCSS('box-shadow', hardShadow)
+  const pdf = await client.request.get(`${link}/pdf`)
+  expect(pdf.headers()['content-type']).toBe('application/pdf')
+  expect((await pdf.body()).toString('latin1')).toContain('SpaceGrotesk')
+  await context.close()
+})

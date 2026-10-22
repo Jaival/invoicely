@@ -64,6 +64,13 @@
       "when": 1792623806143,
       "tag": "0008_user_appearance",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792640149761,
+      "tag": "0009_business_public_style",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,7 @@ const {
   invoiceLine,
   member,
   organization,
+  user,
 } = schema
 
 // The business's today in these tests.
@@ -313,6 +314,28 @@ const organizationProbes: Record<keyof typeof organizations, Probe> = {
       today(),
     )
   },
+  async getPublicAppearance() {
+    // Their owner uses Brutal, and their invoices match it. Mine has no
+    // owner and stays Clean.
+    const ownerId = await createUser('Their owner')
+    await db
+      .update(user)
+      .set({ uiStyle: 'brutal', uiPalette: 'sunshine' })
+      .where(eq(user.id, ownerId))
+    await db.insert(member).values({
+      organizationId: theirs.organizationId,
+      userId: ownerId,
+      role: 'owner',
+      createdAt: new Date(),
+    })
+    await organizations.upsertBusinessProfile(theirs.organizationId, {
+      ...profileValues('Their business', 'THEIRS'),
+      publicStyle: 'match',
+    })
+    expect(
+      await organizations.getPublicAppearance(theirs.organizationId),
+    ).toEqual({ style: 'brutal', palette: 'sunshine' })
+  },
   async upsertBusinessProfile() {
     await organizations.upsertBusinessProfile(
       theirs.organizationId,
@@ -454,6 +477,7 @@ function profileValues(
     defaultCurrency: 'EUR',
     invoicePrefix,
     timeZone,
+    publicStyle: 'clean',
   }
 }
 

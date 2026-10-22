@@ -34,10 +34,28 @@ export function userAppearance(
   }
 }
 
-// The attributes globals.css keys the style off, for <html> or any element
-// that should look different from the page around it. Clean sets none.
+// The attributes globals.css keys the style off, for <html>. Clean sets
+// none, so pages look as they always have.
 export function appearanceAttributes({ style, palette }: Appearance) {
   return style === 'clean'
     ? {}
     : { 'data-style': style, 'data-palette': palette }
+}
+
+// The same for an element that should look different from the page around
+// it, like a public invoice. Clean is set too, to undo a Brutal page.
+export function appearanceScope(appearance: Appearance) {
+  return { 'data-style': appearance.style, ...appearanceAttributes(appearance) }
+}
+
+// How a business's invoices look to its clients, on the public page and in
+// the PDF: always Clean, or the same style the owner uses in the app.
+export const publicStyles = ['clean', 'match'] as const
+export type PublicStyle = (typeof publicStyles)[number]
+
+export function publicAppearance(
+  publicStyle: PublicStyle,
+  owner: Parameters<typeof userAppearance>[0],
+): Appearance {
+  return publicStyle === 'match' ? userAppearance(owner) : defaultAppearance
 }

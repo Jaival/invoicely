@@ -43,4 +43,16 @@ describe('InvoicePdf', () => {
     const pdf = await renderToBuffer(InvoicePdf({ invoice }))
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
   })
+
+  it('embeds the Brutal fonts in the Brutal style', async () => {
+    const pdf = await renderToBuffer(
+      InvoicePdf({
+        invoice,
+        appearance: { style: 'brutal', palette: 'sunshine' },
+      }),
+    )
+    const text = pdf.toString('latin1')
+    expect(text).toContain('SpaceGrotesk')
+    expect(text).toContain('JetBrainsMono')
+  })
 })

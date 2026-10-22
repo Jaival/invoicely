@@ -1,9 +1,10 @@
 import { db } from '@/db'
 import { businessProfile, member, organization, user } from '@/db/schema'
+import { publicAppearance } from '@/lib/appearance'
 import type { BusinessProfileValues } from '@/lib/business-profile'
 import { today } from '@/lib/dates'
 import { organizationSlug } from '@/lib/slug'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { cache } from 'react'
 
 // Returns the user's first organization, creating one they own if they have
@@ -79,6 +80,30 @@ export async function upsertBusinessProfile(
       .where(eq(organization.id, organizationId))
   })
 }
+
+// How the business's invoices look to its clients, on the public page and
+// in the PDF: Clean, or the style its owner uses in the app.
+export const getPublicAppearance = cache(async (organizationId: string) => {
+  const [row] = await db
+    .select({
+      publicStyle: businessProfile.publicStyle,
+      uiStyle: user.uiStyle,
+      uiPalette: user.uiPalette,
+    })
+    .from(businessProfile)
+    .leftJoin(
+      member,
+      and(
+        eq(member.organizationId, businessProfile.organizationId),
+        eq(member.role, 'owner'),
+      ),
+    )
+    .leftJoin(user, eq(user.id, member.userId))
+    .where(eq(businessProfile.organizationId, organizationId))
+    .orderBy(asc(member.createdAt))
+    .limit(1)
+  return publicAppearance(row?.publicStyle ?? 'clean', row)
+})
 
 // Today's date where the business is, for default dates and overdue checks.
 export async function businessToday(organizationId: string) {

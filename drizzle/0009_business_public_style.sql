@@ -1,0 +1,2 @@
+ALTER TABLE "business_profile" ADD COLUMN "public_style" text DEFAULT 'clean' NOT NULL;--> statement-breakpoint
+ALTER TABLE "business_profile" ADD CONSTRAINT "business_profile_public_style" CHECK ("business_profile"."public_style" in ('clean', 'match'));

@@ -31,6 +31,10 @@ export const businessProfile = pgTable(
     // business, for default issue dates and overdue invoices. Unset means
     // UTC.
     timeZone: text(),
+    // How clients see invoices: Clean, or matching the owner's style.
+    publicStyle: text({ enum: ['clean', 'match'] })
+      .notNull()
+      .default('clean'),
     ...timestamps,
   },
   (table) => [
@@ -42,6 +46,10 @@ export const businessProfile = pgTable(
     check(
       'business_profile_invoice_prefix_length',
       sql`char_length(${table.invoicePrefix}) between 1 and 10`,
+    ),
+    check(
+      'business_profile_public_style',
+      sql`${table.publicStyle} in ('clean', 'match')`,
     ),
   ],
 )

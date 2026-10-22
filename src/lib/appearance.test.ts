@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { appearanceAttributes, userAppearance } from './appearance'
+import {
+  appearanceAttributes,
+  appearanceScope,
+  publicAppearance,
+  userAppearance,
+} from './appearance'
 
 describe('userAppearance', () => {
   it('reads the saved style and palette', () => {
@@ -33,5 +38,34 @@ describe('appearanceAttributes', () => {
     expect(
       appearanceAttributes({ style: 'brutal', palette: 'sunshine' }),
     ).toEqual({ 'data-style': 'brutal', 'data-palette': 'sunshine' })
+  })
+})
+
+describe('appearanceScope', () => {
+  it('sets Clean too, to undo a Brutal page around it', () => {
+    expect(appearanceScope({ style: 'clean', palette: 'sunshine' })).toEqual({
+      'data-style': 'clean',
+    })
+    expect(appearanceScope({ style: 'brutal', palette: 'emerald' })).toEqual({
+      'data-style': 'brutal',
+      'data-palette': 'emerald',
+    })
+  })
+})
+
+describe('publicAppearance', () => {
+  const owner = { uiStyle: 'brutal', uiPalette: 'sunshine' }
+
+  it("follows the owner's style when set to match", () => {
+    expect(publicAppearance('match', owner)).toEqual({
+      style: 'brutal',
+      palette: 'sunshine',
+    })
+  })
+
+  it('stays Clean otherwise, or without an owner', () => {
+    const clean = { style: 'clean', palette: 'emerald' }
+    expect(publicAppearance('clean', owner)).toEqual(clean)
+    expect(publicAppearance('match', undefined)).toEqual(clean)
   })
 })
