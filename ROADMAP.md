@@ -109,8 +109,7 @@ A selectable style next to the current clean look, built so it could become the 
 - [x] Business setting "Public invoice style: Clean / Match my style" for the public page and the PDF
       (embedded fonts, no shadows); emails stay clean
 - [x] Brutal dark
-
-Not now: the "Loud" variant (rotated stickers and badges, patterned backgrounds) stays a mockup.
+- [x] Strength: Full, or Loud (dotted paper, big tilted titles, tilted badges, a "late" sticker), screens only
 
 ## Phase 4 — Payments & tracking (2–3 weeks) → **MVP v1.0**
 
