@@ -4,6 +4,12 @@ import { env as clientEnv } from '@/env/client'
 import { env } from '@/env/server'
 import { ResetPasswordEmail } from '@/emails/reset-password'
 import { VerifyEmail } from '@/emails/verify-email'
+import {
+  defaultAppearance,
+  palettes,
+  strengths,
+  styles,
+} from '@/lib/appearance'
 import { emailEnabled, sendEmail } from '@/lib/email/send'
 import { log } from '@/lib/logger'
 import { ensurePersonalOrganization } from '@/lib/organization'
@@ -31,6 +37,29 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   advanced: { database: { generateId: 'uuid' } },
+  user: {
+    // Read with userAppearance(), saved by the appearance settings action.
+    additionalFields: {
+      uiStyle: {
+        type: [...styles],
+        required: false,
+        defaultValue: defaultAppearance.style,
+        input: false,
+      },
+      uiPalette: {
+        type: [...palettes],
+        required: false,
+        defaultValue: defaultAppearance.palette,
+        input: false,
+      },
+      uiStrength: {
+        type: [...strengths],
+        required: false,
+        defaultValue: defaultAppearance.strength,
+        input: false,
+      },
+    },
+  },
   // Better Auth passes the error, if any, as an argument or under `error`.
   logger: {
     log: (level, message, ...args) => {

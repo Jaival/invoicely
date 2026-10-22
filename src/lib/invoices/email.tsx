@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/dates'
 import { publicInvoiceUrl } from '@/lib/invoices/links'
 import type { getInvoice } from '@/lib/invoices/queries'
 import { log } from '@/lib/logger'
+import { getPublicAppearance } from '@/lib/organization'
 import { formatMoney } from '@/lib/money'
 
 type SentInvoice = NonNullable<Awaited<ReturnType<typeof getInvoice>>>
@@ -38,7 +39,11 @@ export async function emailInvoice(invoice: SentInvoice) {
       attachments: [
         {
           filename: `${invoice.number}.pdf`,
-          content: await renderInvoicePdf(invoice),
+          // The email itself stays clean; the PDF is the business's.
+          content: await renderInvoicePdf(
+            invoice,
+            await getPublicAppearance(invoice.organizationId),
+          ),
         },
       ],
     })

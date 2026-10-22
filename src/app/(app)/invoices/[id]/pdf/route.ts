@@ -1,5 +1,6 @@
 import { invoicePdfResponse } from '@/components/invoices/invoice-pdf'
 import { getInvoice } from '@/lib/invoices/queries'
+import { getPublicAppearance } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
 import { isUuid } from '@/lib/validation'
 
@@ -18,5 +19,6 @@ export async function GET(
   if (!invoice || invoice.status === 'draft' || !invoice.number) {
     return new Response('Not found', { status: 404 })
   }
-  return invoicePdfResponse(invoice)
+  // The same PDF the client gets, in the business's public style.
+  return invoicePdfResponse(invoice, await getPublicAppearance(organizationId))
 }

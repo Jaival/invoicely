@@ -46,6 +46,11 @@ type BusinessProfileFormProps = {
 
 // The browser's time zone, once hydrated; blank while rendering on the
 // server, which can't know it.
+const publicStyleOptions: Option[] = [
+  { code: 'clean', name: 'Clean' },
+  { code: 'match', name: 'Match my style' },
+]
+
 const noSubscription = () => () => {}
 const useBrowserTimeZone = () =>
   useSyncExternalStore(
@@ -304,6 +309,15 @@ export function BusinessProfileForm({
                     defaultValue={timeZone}
                     error={errorFor('timeZone')}
                     description="Your day starts at midnight here: new invoices are dated today, and invoices become overdue after their due date."
+                  />
+                  <SelectField
+                    name="publicStyle"
+                    label="Public invoice style"
+                    placeholder="Select a style"
+                    options={publicStyleOptions}
+                    defaultValue={profile.publicStyle}
+                    error={errorFor('publicStyle')}
+                    description="How clients see your invoices, on their page and in the PDF. Match your style to use the one from Appearance settings. Emails stay clean."
                   />
                 </div>
               </FieldGroup>

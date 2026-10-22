@@ -26,7 +26,7 @@ export default async function AppLayout({
         organizationName={activeOrganization?.name ?? 'My business'}
         user={{ name: user.name, email: user.email, image: user.image }}
       />
-      <SidebarInset>
+      <SidebarInset className="loud:bg-dots">
         <AppHeader />
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
       </SidebarInset>

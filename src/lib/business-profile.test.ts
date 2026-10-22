@@ -15,6 +15,7 @@ const valid = {
   defaultCurrency: 'GBP',
   invoicePrefix: 'la-',
   timeZone: 'Europe/London',
+  publicStyle: 'match',
 }
 
 describe('businessProfileSchema', () => {
@@ -32,6 +33,7 @@ describe('businessProfileSchema', () => {
       defaultCurrency: 'GBP',
       invoicePrefix: 'LA-',
       timeZone: 'Europe/London',
+      publicStyle: 'match',
     })
   })
 
@@ -44,13 +46,14 @@ describe('businessProfileSchema', () => {
     ).toBe(false)
   })
 
-  it('rejects an unknown currency, a bad email, a bad prefix and an unknown time zone', () => {
+  it('rejects an unknown currency, a bad email, a bad prefix, an unknown time zone and an unknown public style', () => {
     const result = businessProfileSchema.safeParse({
       ...valid,
       defaultCurrency: 'XXX',
       email: 'not-an-email',
       invoicePrefix: 'INV 2026!',
       timeZone: 'London',
+      publicStyle: 'loud',
     })
     expect(result.success).toBe(false)
     expect(result.error?.issues.map((issue) => issue.path[0])).toEqual([
@@ -58,6 +61,7 @@ describe('businessProfileSchema', () => {
       'defaultCurrency',
       'invoicePrefix',
       'timeZone',
+      'publicStyle',
     ])
   })
 

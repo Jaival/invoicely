@@ -1,3 +1,4 @@
+import { loudSticker } from '@/components/app/page-title'
 import { CopyLinkButton } from '@/components/invoices/copy-link-button'
 import {
   DuplicateButton,
@@ -71,7 +72,7 @@ export function InvoiceView({
       <CardHeader className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <CardTitle className="flex items-center gap-3 text-xl">
-            <h1>{invoice.number}</h1>
+            <h1 className={loudSticker}>{invoice.number}</h1>
             <InvoiceStatusBadge status={status} />
           </CardTitle>
           <CardDescription>{descriptions[status]}</CardDescription>
@@ -139,13 +140,13 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
           {dates.map(([label, value]) => (
             <div key={label} className="col-span-2 grid grid-cols-subgrid">
               <dt className="text-muted-foreground">{label}</dt>
-              <dd>{value}</dd>
+              <dd className="font-figures">{value}</dd>
             </div>
           ))}
         </dl>
       </div>
       {/* No frame on paper, where it would run on past a page break. */}
-      <div className="border print:border-0">
+      <div className="panel print:border-0 print:shadow-none">
         <Table>
           <TableHeader>
             <TableRow>
@@ -163,21 +164,21 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
                 <TableCell className="whitespace-normal">
                   {line.description}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right font-figures tabular-nums">
                   {formatQuantity(line.quantity)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right font-figures tabular-nums">
                   {money(line.unitPrice)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right font-figures tabular-nums">
                   {line.taxRate ? `${formatRate(line.taxRate)}%` : '—'}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right font-figures tabular-nums">
                   {line.discountRate
                     ? `${formatRate(line.discountRate)}%`
                     : '—'}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right font-figures tabular-nums">
                   {money(lineAmounts(line).net)}
                 </TableCell>
               </TableRow>

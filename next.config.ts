@@ -4,7 +4,14 @@ import type { NextConfig } from 'next'
 import './src/env/client'
 import './src/env/server'
 
-const nextConfig: NextConfig = {}
+const nextConfig: NextConfig = {
+  // Fonts the invoice PDF embeds, read from disk when it renders: for the
+  // PDF downloads and for the copy attached to invoice emails.
+  outputFileTracingIncludes: {
+    '/i/**': ['./src/components/invoices/fonts/*.ttf'],
+    '/invoices/**': ['./src/components/invoices/fonts/*.ttf'],
+  },
+}
 
 export default withSentryConfig(nextConfig, {
   org: 'jaival',

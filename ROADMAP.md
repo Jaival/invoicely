@@ -97,20 +97,19 @@ Not now: bulk selection, date and client filters (a period picker comes with CSV
 
 A selectable style next to the current clean look, built so it could become the default later.
 
-- [ ] Style (Clean / Brutal) and palette (Emerald / Sunshine) saved on the account and applied server-side,
+- [x] Style (Clean / Brutal) and palette (Emerald / Sunshine) saved on the account and applied server-side,
       no flash; light/dark mode stays separate, in the browser
-- [ ] Brutal light: 2–3px black borders, hard 4px shadows, buttons that press in (respects reduced motion),
+- [x] Brutal light: 2–3px black borders, hard 4px shadows, buttons that press in (respects reduced motion),
       contrast-checked colors
-- [ ] Palettes: Emerald (emerald actions, mint highlights) and Sunshine (yellow actions, pink highlights),
+- [x] Palettes: Emerald (emerald actions, mint highlights) and Sunshine (yellow actions, pink highlights),
       both with loud status colors (overdue pink, sent blue, paid lime, draft grey)
-- [ ] Fonts, loaded only for Brutal: Space Grotesk headings, Inter body, JetBrains Mono for amounts,
+- [x] Fonts, loaded only for Brutal: Space Grotesk headings, Inter body, JetBrains Mono for amounts,
       numbers and dates
-- [ ] Core components: button, card, input, badge, table, tabs, menu, dialog; then sidebar, forms, empty states
-- [ ] Business setting "Public invoice style: Clean / Match my style" for the public page and the PDF
+- [x] Core components: button, card, input, badge, table, tabs, menu, dialog; then sidebar, forms, empty states
+- [x] Business setting "Public invoice style: Clean / Match my style" for the public page and the PDF
       (embedded fonts, no shadows); emails stay clean
-- [ ] Brutal dark; until then Brutal + dark falls back to Brutal light
-
-Not now: the "Loud" variant (rotated stickers and badges, patterned backgrounds) stays a mockup.
+- [x] Brutal dark
+- [x] Strength: Full, or Loud (dotted paper, big tilted titles, tilted badges, a "late" sticker), screens only
 
 ## Phase 4 — Payments & tracking (2–3 weeks) → **MVP v1.0**
 

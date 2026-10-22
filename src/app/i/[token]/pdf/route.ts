@@ -1,5 +1,6 @@
 import { invoicePdfResponse } from '@/components/invoices/invoice-pdf'
 import { getPublicInvoice } from '@/lib/invoices/queries'
+import { getPublicAppearance } from '@/lib/organization'
 
 // The PDF behind an invoice's public link; no sign-in, the token is the key.
 export async function GET(
@@ -9,5 +10,8 @@ export async function GET(
   const { token } = await params
   const invoice = await getPublicInvoice(token)
   if (!invoice?.number) return new Response('Not found', { status: 404 })
-  return invoicePdfResponse(invoice)
+  return invoicePdfResponse(
+    invoice,
+    await getPublicAppearance(invoice.organizationId),
+  )
 }

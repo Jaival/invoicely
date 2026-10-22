@@ -1,10 +1,47 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* Dark mode is for screens. Paper is white, so pages always print light. */
+/*
+ * Dark mode is for screens. Paper is white, so pages always print light.
+ * Brutal's dark version is all in its tokens below, so dark: utilities,
+ * which tune Clean's, skip it.
+ */
 @custom-variant dark {
   @media screen {
-    &:is(.dark *) {
+    &:is(.dark *):not(:where([data-style='brutal'], [data-style='brutal'] *)) {
+      @slot;
+    }
+  }
+}
+
+/*
+ * Styles only the Brutal style, e.g. `brutal:shadow-brutal`. A page can
+ * set its own style on an element, like the public invoice does for the
+ * business's choice, and a Clean element inside Brutal stays Clean.
+ */
+@custom-variant brutal {
+  &:where([data-style='brutal'], [data-style='brutal'] *):not(
+      :where([data-style='clean'], [data-style='clean'] *)
+    ) {
+    @slot;
+  }
+}
+
+/*
+ * Brutal turned up (data-strength="loud"), e.g. `loud:-rotate-2`. Screens
+ * only, so a printed invoice stays straight. An element set to Clean or
+ * Full inside a Loud page stays calm.
+ */
+@custom-variant loud {
+  @media screen {
+    &:where([data-strength='loud'], [data-strength='loud'] *):not(
+        :where(
+          [data-style='clean'],
+          [data-style='clean'] *,
+          [data-strength='full'],
+          [data-strength='full'] *
+        )
+      ) {
       @slot;
     }
   }
@@ -13,8 +50,10 @@
 /*
  * Invoicely theme, built on shadcn/ui tokens.
  * Light: Neutral base. Dark: Slate base. Primary: Emerald in both. Radius 0.
+ * Also the Clean style on an element inside Brutal.
  */
-:root {
+:root,
+[data-style='clean'] {
   --radius: 0rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -47,10 +86,14 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.596 0.145 163.225);
+  --heading: var(--font-inter);
+  --figures: var(--font-inter);
+  --destructive-foreground: #ffffff;
 }
 
 @media screen {
-  .dark {
+  .dark,
+  .dark [data-style='clean'] {
     --background: oklch(0.129 0.042 264.695);
     --foreground: oklch(0.984 0.003 247.858);
     --card: oklch(0.208 0.042 265.755);
@@ -85,10 +128,120 @@
   }
 }
 
+/*
+ * Brutal style (Neo Brutalism): cream paper, black ink, flat bright colors,
+ * thick borders and hard shadows. Set on <html> with data-style, colors
+ * picked with data-palette; dark mode further down. Every text color pair
+ * here is at least 4.5:1.
+ */
+[data-style='brutal'] {
+  color-scheme: light;
+  --radius: 0rem;
+  --background: #fffbf0;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  /* Actions: dark ink on the palette's main color. */
+  --primary: #10b981;
+  --primary-foreground: #0a0a0a;
+  --secondary: #ffffff;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f3ecd8;
+  --muted-foreground: #4d4d4d;
+  /* Highlights: hover, selection and the current page. */
+  --accent: #6ee7b7;
+  --accent-foreground: #0a0a0a;
+  /* Dark enough for red text on cream and white text on red. */
+  --destructive: #c81e4a;
+  --border: #0a0a0a;
+  --input: #0a0a0a;
+  --ring: #0a0a0a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #0a0a0a;
+  --sidebar-ring: #0a0a0a;
+  /* Loud invoice statuses, all with dark ink. */
+  --status-overdue: #ff5c8a;
+  --status-sent: #7dd3fc;
+  --status-paid: #b8f35b;
+  --status-draft: #d9d9d9;
+  /* Status colors are bright in light and dark, so their text is dark. */
+  --status-foreground: #0a0a0a;
+  --destructive-foreground: #ffffff;
+  --heading: var(--font-space-grotesk);
+  --figures: var(--font-jetbrains-mono);
+  /* Loud's dotted paper. */
+  --dot: #e7dcc0;
+}
+
+[data-style='brutal'][data-palette='sunshine'] {
+  --background: #fff6dc;
+  --primary: #ffd23f;
+  --muted: #f7e8bd;
+  --muted-foreground: #4a4a4a;
+  --accent: #ff7ab6;
+  --status-sent: #6ea8ff;
+  --dot: #f0d98f;
+}
+
+/*
+ * Brutal dark: near-black paper, cream ink, borders and shadows. The
+ * palette's fills stay bright with dark text, as in light.
+ */
+@media screen {
+  .dark[data-style='brutal'],
+  .dark [data-style='brutal'] {
+    color-scheme: dark;
+    --background: #121212;
+    --foreground: #fbf6e9;
+    --card: #1e1e1e;
+    --card-foreground: #fbf6e9;
+    --popover: #1e1e1e;
+    --popover-foreground: #fbf6e9;
+    --secondary: #1e1e1e;
+    --secondary-foreground: #fbf6e9;
+    --muted: #2a2a2a;
+    --muted-foreground: #b8b2a4;
+    /* Light enough for red text on the dark paper, so its text is dark. */
+    --destructive: #ff6b8b;
+    --destructive-foreground: #0a0a0a;
+    --border: #fbf6e9;
+    --input: #fbf6e9;
+    --ring: #fbf6e9;
+    --sidebar: #1e1e1e;
+    --sidebar-foreground: #fbf6e9;
+    --sidebar-border: #fbf6e9;
+    --sidebar-ring: #fbf6e9;
+    --dot: #303030;
+  }
+
+  .dark[data-style='brutal'][data-palette='sunshine'],
+  .dark [data-style='brutal'][data-palette='sunshine'] {
+    --background: #16130b;
+    --card: #221e14;
+    --popover: #221e14;
+    --secondary: #221e14;
+    --muted: #2e2919;
+    --muted-foreground: #bdb5a0;
+    --sidebar: #221e14;
+    --dot: #3b3322;
+  }
+}
+
 @media print {
   /* Beats the color-scheme next-themes sets on <html>. */
   html {
     color-scheme: light !important;
+  }
+  /* Brutal's hard shadows are for screens. */
+  [data-style='brutal'] * {
+    box-shadow: none !important;
   }
 }
 
@@ -98,6 +251,20 @@
 
 @theme inline {
   --font-sans: var(--font-inter);
+  /* Headings, and amounts, numbers and dates. Inter unless Brutal. */
+  --font-heading: var(--heading);
+  --font-figures: var(--figures);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-sent: var(--status-sent);
+  --color-status-paid: var(--status-paid);
+  --color-status-draft: var(--status-draft);
+  --color-status-foreground: var(--status-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  /* Brutal's hard shadows; buttons drop theirs to press in. */
+  --shadow-brutal: 4px 4px 0 0 var(--foreground);
+  --shadow-brutal-sm: 2px 2px 0 0 var(--foreground);
+  /* As deep as --press, set per button size. */
+  --shadow-press: var(--press) var(--press) 0 0 var(--foreground);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -138,6 +305,22 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Loud's dotted paper, behind a page. */
+@utility bg-dots {
+  background-image: radial-gradient(var(--dot) 1.4px, transparent 1.4px);
+  background-size: 16px 16px;
+}
+
+/* A bordered box on the page, e.g. around a table. Brutal lifts it. */
+@utility panel {
+  border-width: 1px;
+  @variant brutal {
+    border-width: 2px;
+    background-color: var(--card);
+    box-shadow: 4px 4px 0 0 var(--foreground);
+  }
+}
+
 @utility container {
   margin-inline: auto;
   padding-inline: 2rem;
@@ -150,5 +333,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
   }
 }

@@ -32,6 +32,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           '--border-radius': 'var(--radius)',
         } as React.CSSProperties
       }
+      toastOptions={{
+        // Sonner's own toast styles need !important to override.
+        classNames: {
+          toast: 'brutal:border-2! brutal:shadow-brutal! brutal:font-heading',
+        },
+      }}
       {...props}
     />
   )

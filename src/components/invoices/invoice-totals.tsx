@@ -32,12 +32,12 @@ export function InvoiceTotalsList({
       {rows.map(([label, amount]) => (
         <div key={label} className="col-span-2 grid grid-cols-subgrid">
           <dt className="text-muted-foreground">{label}</dt>
-          <dd className="text-right">{money(amount)}</dd>
+          <dd className="text-right font-figures">{money(amount)}</dd>
         </div>
       ))}
       <div className="col-span-2 mt-2 grid grid-cols-subgrid border-t pt-2 text-base font-semibold">
         <dt>Total</dt>
-        <dd className="text-right">{money(totals.total)}</dd>
+        <dd className="text-right font-figures">{money(totals.total)}</dd>
       </div>
     </dl>
   )

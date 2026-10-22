@@ -65,3 +65,46 @@ test('pick a theme on the appearance page', async ({ page }) => {
   await page.getByRole('radio', { name: 'Dark' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
 })
+
+test('pick the Brutal style, saved on the account', async ({ page }) => {
+  await signUp(page)
+  await page.goto('/settings/appearance')
+  const html = page.locator('html')
+  await page.getByRole('radio', { name: 'Dark' }).click()
+
+  // Palettes only color Brutal.
+  await expect(page.getByRole('radio', { name: 'Sunshine' })).toBeDisabled()
+  await page.getByRole('radio', { name: 'Brutal' }).click()
+  await expect(html).toHaveAttribute('data-style', 'brutal')
+  await page.getByRole('radio', { name: 'Sunshine' }).click()
+  await expect(html).toHaveAttribute('data-palette', 'sunshine')
+  // Brutal has a dark version: dark paper, cream ink.
+  await expect(html).toHaveClass(/dark/)
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    'rgb(22, 19, 11)',
+  )
+
+  // The server sends it with the page, so it doesn't flash.
+  const response = await page.request.get('/invoices')
+  expect(await response.text()).toMatch(
+    /<html[^>]*data-style="brutal" data-palette="sunshine"/,
+  )
+
+  // Loud turns it up, with a big tilted page title.
+  await expect(html).not.toHaveAttribute('data-strength')
+  await page.getByRole('radio', { name: 'Loud' }).click()
+  await expect(html).toHaveAttribute('data-strength', 'loud')
+  await expect(page.getByRole('heading', { name: 'Settings' })).toHaveCSS(
+    'rotate',
+    '-1.5deg',
+  )
+  await page.getByRole('radio', { name: 'Full' }).click()
+  await expect(html).not.toHaveAttribute('data-strength')
+
+  await page.getByRole('radio', { name: 'Clean' }).click()
+  await expect(html).not.toHaveAttribute('data-style')
+  // Strength, like the palette, only applies to Brutal.
+  await expect(page.getByRole('radio', { name: 'Loud' })).toBeDisabled()
+  await expect(html).toHaveClass(/dark/)
+})

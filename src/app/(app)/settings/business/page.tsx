@@ -31,6 +31,7 @@ export default async function BusinessSettingsPage() {
         invoicePrefix: profile?.invoicePrefix ?? 'INV',
         // Blank until chosen; the form suggests the browser's.
         timeZone: profile?.timeZone ?? '',
+        publicStyle: profile?.publicStyle ?? 'clean',
       }}
       timeZones={timeZoneOptions()}
       logoUrl={profile?.logoUrl ?? null}

@@ -1,3 +1,4 @@
+import { PageTitle } from '@/components/app/page-title'
 import { InvoiceCards } from '@/components/invoices/invoice-cards'
 import { InvoiceRowMenu } from '@/components/invoices/invoice-row-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
@@ -105,9 +106,8 @@ export default async function InvoicesPage({
   const tabs: ListView[] = [...listTabs]
   if (!tabs.includes(options.view)) tabs.push(options.view)
 
-  const heading = (
-    <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
-  )
+  const heading = <PageTitle>Invoices</PageTitle>
+  const lateCount = counts.overdue ?? 0
   const newInvoice = (
     <Button asChild>
       <Link href="/invoices/new">
@@ -121,7 +121,7 @@ export default async function InvoicesPage({
     return (
       <>
         {heading}
-        <Empty className="border">
+        <Empty className="panel">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <FileText />
@@ -157,9 +157,19 @@ export default async function InvoicesPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
         {heading}
         {newInvoice}
+        {lateCount > 0 && (
+          // Loud's sticker, in the space beside the search. Decoration: the
+          // Overdue tab says the same.
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-full right-6 mt-4 hidden rotate-[8deg] rounded-full border-2 border-foreground bg-accent px-3 py-2 font-heading text-sm font-bold text-accent-foreground shadow-brutal-sm loud:sm:block"
+          >
+            {lateCount} late!
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-3">
         <Form action="/invoices" className="max-w-sm">
@@ -207,7 +217,7 @@ export default async function InvoicesPage({
             today={today}
             className="sm:hidden"
           />
-          <div className="hidden border sm:block">
+          <div className="hidden panel sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -227,7 +237,7 @@ export default async function InvoicesPage({
                   const status = displayStatus(invoice, today)
                   return (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-figures font-medium">
                         <Link
                           href={`/invoices/${invoice.id}`}
                           className="hover:underline"
@@ -237,7 +247,7 @@ export default async function InvoicesPage({
                       </TableCell>
                       <TableCell>{invoice.clientName}</TableCell>
                       {showIssued && (
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="font-figures text-muted-foreground">
                           {formatDate(invoice.issueDate)}
                         </TableCell>
                       )}
@@ -250,7 +260,7 @@ export default async function InvoicesPage({
                       >
                         {dueLabel(invoice, today) ?? '—'}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right font-figures tabular-nums">
                         {formatMoney(invoice.total, invoice.currency)}
                       </TableCell>
                       <TableCell>
@@ -319,7 +329,7 @@ function Pages({
       aria-label="Pages"
       className="flex flex-wrap items-center justify-between gap-3 text-sm"
     >
-      <p className="text-muted-foreground tabular-nums">
+      <p className="font-figures text-muted-foreground tabular-nums">
         {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of{' '}
         {count}
       </p>
@@ -339,7 +349,7 @@ function Pages({
                 key={number}
                 variant={number === page ? 'secondary' : 'ghost'}
                 size="sm"
-                className="min-w-8 tabular-nums"
+                className="min-w-8 font-figures tabular-nums"
                 asChild
               >
                 <Link
@@ -405,18 +415,34 @@ function OwedTotals({
 
   return (
     <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
-      <div className="border p-4">
-        <dt className="text-sm text-muted-foreground">Outstanding</dt>
-        <dd className="mt-1 text-xl font-semibold tabular-nums">
+      <div className="panel p-4">
+        <dt className={statLabel}>Outstanding</dt>
+        <dd className="mt-1 font-figures text-xl font-semibold tabular-nums">
           {amounts(owed, 'outstanding')}
         </dd>
       </div>
-      <div className="border p-4">
-        <dt className="text-sm text-muted-foreground">Overdue</dt>
+      <div
+        className={cn(
+          'panel p-4',
+          // Brutal fills the box with the overdue color instead, and Loud
+          // tilts it.
+          overdue.length > 0 &&
+            'brutal:bg-status-overdue brutal:text-status-foreground loud:rotate-[1.5deg]',
+        )}
+      >
+        <dt
+          className={cn(
+            statLabel,
+            overdue.length > 0 && 'brutal:text-status-foreground',
+          )}
+        >
+          Overdue
+        </dt>
         <dd
           className={cn(
-            'mt-1 text-xl font-semibold tabular-nums',
-            overdue.length > 0 && 'text-destructive',
+            'mt-1 font-figures text-xl font-semibold tabular-nums',
+            overdue.length > 0 &&
+              'text-destructive brutal:text-status-foreground',
           )}
         >
           {overdue.length > 0 ? amounts(overdue, 'overdue') : 'Nothing'}
@@ -425,6 +451,9 @@ function OwedTotals({
     </dl>
   )
 }
+
+const statLabel =
+  'text-sm text-muted-foreground brutal:text-xs brutal:font-semibold brutal:tracking-wider brutal:uppercase'
 
 function ViewLink({
   options,
@@ -439,13 +468,30 @@ function ViewLink({
 }) {
   const current = options.view === view
   return (
-    <Button variant={current ? 'secondary' : 'ghost'} size="sm" asChild>
+    <Button
+      variant={current ? 'secondary' : 'ghost'}
+      size="sm"
+      // Brutal boxes every tab and highlights the current one.
+      className={cn(
+        current
+          ? 'brutal:bg-accent brutal:text-accent-foreground brutal:hover:bg-accent'
+          : 'brutal:border-2 brutal:border-foreground brutal:bg-card',
+      )}
+      asChild
+    >
       <Link
         href={listHref(options, { view })}
         aria-current={current ? 'true' : undefined}
       >
         {children}
-        <span className="text-muted-foreground tabular-nums">{count}</span>
+        <span
+          className={cn(
+            'font-figures text-muted-foreground tabular-nums',
+            current && 'brutal:text-accent-foreground',
+          )}
+        >
+          {count}
+        </span>
       </Link>
     </Button>
   )
@@ -491,7 +537,10 @@ function SortableHead({
         {children}
         <Icon
           aria-hidden
-          className={cn('size-3.5', !sorted && 'text-muted-foreground/60')}
+          className={cn(
+            'size-3.5',
+            !sorted && 'text-muted-foreground/60 brutal:text-background/60',
+          )}
         />
       </Link>
     </TableHead>

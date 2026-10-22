@@ -21,6 +21,11 @@ export const user = pgTable('user', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  uiStyle: text('ui_style', { enum: ['clean', 'brutal'] }).default('clean'),
+  uiPalette: text('ui_palette', { enum: ['emerald', 'sunshine'] }).default(
+    'emerald',
+  ),
+  uiStrength: text('ui_strength', { enum: ['full', 'loud'] }).default('full'),
 })
 
 export const session = pgTable(

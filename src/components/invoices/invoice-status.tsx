@@ -18,6 +18,19 @@ const variants = {
   void: 'outline',
 } as const
 
+// Brutal gives every status its own loud color, all with dark ink.
+const brutalColors: Record<DisplayStatus, string> = {
+  draft: 'brutal:bg-status-draft brutal:text-status-foreground',
+  sent: 'brutal:bg-status-sent brutal:text-status-foreground',
+  overdue: 'brutal:bg-status-overdue brutal:text-status-foreground',
+  paid: 'brutal:bg-status-paid brutal:text-status-foreground',
+  void: 'brutal:bg-card brutal:text-foreground',
+}
+
+// Loud tilts badges, every other row the other way.
+const loudTilt =
+  'loud:-rotate-[4deg] loud:shadow-brutal-sm loud:in-[li:nth-child(even)]:rotate-3 loud:in-[tr:nth-child(even)]:rotate-3'
+
 // Printers drop background colors, which would leave light text on white,
 // so badges print as outlines.
 const printed =
@@ -27,7 +40,12 @@ export function InvoiceStatusBadge({ status }: { status: DisplayStatus }) {
   return (
     <Badge
       variant={variants[status]}
-      className={cn(status === 'void' && 'text-muted-foreground', printed)}
+      className={cn(
+        status === 'void' && 'text-muted-foreground',
+        brutalColors[status],
+        loudTilt,
+        printed,
+      )}
     >
       {labels[status]}
     </Badge>

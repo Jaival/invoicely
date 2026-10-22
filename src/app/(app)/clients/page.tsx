@@ -1,3 +1,4 @@
+import { PageTitle } from '@/components/app/page-title'
 import { Button } from '@/components/ui/button'
 import {
   Empty,
@@ -44,15 +45,13 @@ export default async function ClientsPage({
   const search = typeof q === 'string' ? q.trim() : ''
   const clients = await listClients(organizationId, search)
 
-  const heading = (
-    <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
-  )
+  const heading = <PageTitle>Clients</PageTitle>
 
   if (!clients.length && !search) {
     return (
       <>
         {heading}
-        <Empty className="border">
+        <Empty className="panel">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Users />
@@ -102,7 +101,7 @@ export default async function ClientsPage({
         </InputGroup>
       </Form>
       {clients.length ? (
-        <div className="border">
+        <div className="panel">
           <Table>
             <TableHeader>
               <TableRow>

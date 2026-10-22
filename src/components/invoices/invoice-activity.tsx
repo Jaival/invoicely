@@ -15,7 +15,7 @@ export function InvoiceActivity({ events, timeZone }: InvoiceActivityProps) {
       <h2 id="invoice-activity" className="mb-3 text-muted-foreground">
         Activity
       </h2>
-      <ol className="flex flex-col gap-2 border-l pl-4">
+      <ol className="flex flex-col gap-2 border-l pl-4 brutal:border-l-2">
         {events.map((event) => (
           <li
             key={event.id}
@@ -24,7 +24,7 @@ export function InvoiceActivity({ events, timeZone }: InvoiceActivityProps) {
             <span>{describeEvent(event)}</span>
             <time
               dateTime={event.createdAt.toISOString()}
-              className="text-muted-foreground tabular-nums"
+              className="font-figures text-muted-foreground tabular-nums"
             >
               {formatDateTime(event.createdAt, timeZone)}
             </time>
