@@ -48,7 +48,7 @@ describe('InvoicePdf', () => {
     const pdf = await renderToBuffer(
       InvoicePdf({
         invoice,
-        appearance: { style: 'brutal', palette: 'sunshine' },
+        appearance: { style: 'brutal', palette: 'sunshine', strength: 'loud' },
       }),
     )
     const text = pdf.toString('latin1')

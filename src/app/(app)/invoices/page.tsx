@@ -1,3 +1,4 @@
+import { PageTitle } from '@/components/app/page-title'
 import { InvoiceCards } from '@/components/invoices/invoice-cards'
 import { InvoiceRowMenu } from '@/components/invoices/invoice-row-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
@@ -105,9 +106,8 @@ export default async function InvoicesPage({
   const tabs: ListView[] = [...listTabs]
   if (!tabs.includes(options.view)) tabs.push(options.view)
 
-  const heading = (
-    <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
-  )
+  const heading = <PageTitle>Invoices</PageTitle>
+  const lateCount = counts.overdue ?? 0
   const newInvoice = (
     <Button asChild>
       <Link href="/invoices/new">
@@ -157,9 +157,19 @@ export default async function InvoicesPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
         {heading}
         {newInvoice}
+        {lateCount > 0 && (
+          // Loud's sticker, in the space beside the search. Decoration: the
+          // Overdue tab says the same.
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-full right-6 mt-4 hidden rotate-[8deg] rounded-full border-2 border-foreground bg-accent px-3 py-2 font-heading text-sm font-bold text-accent-foreground shadow-brutal-sm loud:sm:block"
+          >
+            {lateCount} late!
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-3">
         <Form action="/invoices" className="max-w-sm">
@@ -414,9 +424,10 @@ function OwedTotals({
       <div
         className={cn(
           'panel p-4',
-          // Brutal fills the box with the overdue color instead.
+          // Brutal fills the box with the overdue color instead, and Loud
+          // tilts it.
           overdue.length > 0 &&
-            'brutal:bg-status-overdue brutal:text-status-foreground',
+            'brutal:bg-status-overdue brutal:text-status-foreground loud:rotate-[1.5deg]',
         )}
       >
         <dt

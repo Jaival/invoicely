@@ -1,3 +1,4 @@
+import { PageTitle } from '@/components/app/page-title'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -27,9 +28,7 @@ export default async function DashboardPage() {
   return (
     <>
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome, {user.name}
-        </h1>
+        <PageTitle>Welcome, {user.name}</PageTitle>
         <p className="text-muted-foreground">
           Signed in as {user.email}
           {activeOrganization && <> · {activeOrganization.name}</>}

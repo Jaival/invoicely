@@ -18,6 +18,7 @@ export async function saveAppearance(
   await internalAdapter.updateUser(user.id, {
     uiStyle: parsed.data.style,
     uiPalette: parsed.data.palette,
+    uiStrength: parsed.data.strength,
   })
   // The root layout applies the style; render it again.
   refresh()

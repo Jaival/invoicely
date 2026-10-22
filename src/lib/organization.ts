@@ -89,6 +89,7 @@ export const getPublicAppearance = cache(async (organizationId: string) => {
       publicStyle: businessProfile.publicStyle,
       uiStyle: user.uiStyle,
       uiPalette: user.uiPalette,
+      uiStrength: user.uiStrength,
     })
     .from(businessProfile)
     .leftJoin(

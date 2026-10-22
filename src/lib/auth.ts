@@ -4,7 +4,12 @@ import { env as clientEnv } from '@/env/client'
 import { env } from '@/env/server'
 import { ResetPasswordEmail } from '@/emails/reset-password'
 import { VerifyEmail } from '@/emails/verify-email'
-import { defaultAppearance, palettes, styles } from '@/lib/appearance'
+import {
+  defaultAppearance,
+  palettes,
+  strengths,
+  styles,
+} from '@/lib/appearance'
 import { emailEnabled, sendEmail } from '@/lib/email/send'
 import { log } from '@/lib/logger'
 import { ensurePersonalOrganization } from '@/lib/organization'
@@ -45,6 +50,12 @@ export const auth = betterAuth({
         type: [...palettes],
         required: false,
         defaultValue: defaultAppearance.palette,
+        input: false,
+      },
+      uiStrength: {
+        type: [...strengths],
+        required: false,
+        defaultValue: defaultAppearance.strength,
         input: false,
       },
     },

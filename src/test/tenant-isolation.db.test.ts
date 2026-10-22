@@ -334,7 +334,7 @@ const organizationProbes: Record<keyof typeof organizations, Probe> = {
     })
     expect(
       await organizations.getPublicAppearance(theirs.organizationId),
-    ).toEqual({ style: 'brutal', palette: 'sunshine' })
+    ).toEqual({ style: 'brutal', palette: 'sunshine', strength: 'full' })
   },
   async upsertBusinessProfile() {
     await organizations.upsertBusinessProfile(

@@ -1,3 +1,4 @@
+import { loudSticker } from '@/components/app/page-title'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { InvoiceDocument } from '@/components/invoices/invoice-view'
 import { PrintButton } from '@/components/invoices/print-button'
@@ -57,14 +58,14 @@ export default async function PublicInvoicePage({ params }: Props) {
     // visitor's page is in theirs.
     <div
       {...appearanceScope(appearance)}
-      className="min-h-screen bg-background text-foreground print:min-h-0"
+      className="min-h-screen bg-background text-foreground print:min-h-0 loud:bg-dots"
     >
       <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 p-6 print:min-h-0 print:max-w-none print:p-0">
         <Card className="print:border-0 print:py-0 print:shadow-none">
           <CardHeader className="flex flex-wrap items-start justify-between gap-4 print:px-0">
             <div className="flex flex-col gap-2">
               <CardTitle className="flex items-center gap-3 text-xl">
-                <h1>Invoice {invoice.number}</h1>
+                <h1 className={loudSticker}>Invoice {invoice.number}</h1>
                 <InvoiceStatusBadge status={status} />
               </CardTitle>
               {from && <CardDescription>From {from}</CardDescription>}

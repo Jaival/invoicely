@@ -127,6 +127,8 @@ function brutalStyles(palette: Palette) {
       marginTop: 8,
       alignSelf: 'flex-end',
     },
+    // Loud tilts the title on paper too; the dots stay on screens.
+    loudTitle: { transform: 'rotate(-3deg)' },
     heading: { fontFamily: 'Space Grotesk' },
     figures: { fontFamily: 'JetBrains Mono', fontSize: 9 },
     row: { borderBottomColor: ink, paddingHorizontal: 4 },
@@ -172,6 +174,7 @@ export function InvoicePdf({
   if (invoice.paidOn) dates.push(['Paid', formatDate(invoice.paidOn)])
   const b =
     appearance.style === 'brutal' ? brutal[appearance.palette] : undefined
+  const loud = appearance.strength === 'loud'
   const cell = [styles.cell, b?.figures]
   const wideCell = [styles.wideCell, b?.figures]
 
@@ -191,7 +194,9 @@ export function InvoicePdf({
             <Text style={[styles.bold, b?.heading]}>{business?.name}</Text>
           )}
           <View>
-            <Text style={[styles.title, b?.title]}>
+            <Text
+              style={[styles.title, b?.title, loud ? b?.loudTitle : undefined]}
+            >
               {invoice.status === 'void' ? 'VOID INVOICE' : 'INVOICE'}
             </Text>
             <Text style={[styles.number, b?.number]}>{invoice.number}</Text>

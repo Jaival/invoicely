@@ -28,6 +28,26 @@
 }
 
 /*
+ * Brutal turned up (data-strength="loud"), e.g. `loud:-rotate-2`. Screens
+ * only, so a printed invoice stays straight. An element set to Clean or
+ * Full inside a Loud page stays calm.
+ */
+@custom-variant loud {
+  @media screen {
+    &:where([data-strength='loud'], [data-strength='loud'] *):not(
+        :where(
+          [data-style='clean'],
+          [data-style='clean'] *,
+          [data-strength='full'],
+          [data-strength='full'] *
+        )
+      ) {
+      @slot;
+    }
+  }
+}
+
+/*
  * Invoicely theme, built on shadcn/ui tokens.
  * Light: Neutral base. Dark: Slate base. Primary: Emerald in both. Radius 0.
  * Also the Clean style on an element inside Brutal.
@@ -156,6 +176,8 @@
   --destructive-foreground: #ffffff;
   --heading: var(--font-space-grotesk);
   --figures: var(--font-jetbrains-mono);
+  /* Loud's dotted paper. */
+  --dot: #e7dcc0;
 }
 
 [data-style='brutal'][data-palette='sunshine'] {
@@ -165,6 +187,7 @@
   --muted-foreground: #4a4a4a;
   --accent: #ff7ab6;
   --status-sent: #6ea8ff;
+  --dot: #f0d98f;
 }
 
 /*
@@ -195,6 +218,7 @@
     --sidebar-foreground: #fbf6e9;
     --sidebar-border: #fbf6e9;
     --sidebar-ring: #fbf6e9;
+    --dot: #303030;
   }
 
   .dark[data-style='brutal'][data-palette='sunshine'],
@@ -206,6 +230,7 @@
     --muted: #2e2919;
     --muted-foreground: #bdb5a0;
     --sidebar: #221e14;
+    --dot: #3b3322;
   }
 }
 
@@ -278,6 +303,12 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Loud's dotted paper, behind a page. */
+@utility bg-dots {
+  background-image: radial-gradient(var(--dot) 1.4px, transparent 1.4px);
+  background-size: 16px 16px;
 }
 
 /* A bordered box on the page, e.g. around a table. Brutal lifts it. */

@@ -1,3 +1,4 @@
+import { PageTitle } from '@/components/app/page-title'
 import { SettingsNav } from '@/components/settings/settings-nav'
 
 export default function SettingsLayout({
@@ -8,7 +9,7 @@ export default function SettingsLayout({
   return (
     <>
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <PageTitle>Settings</PageTitle>
         <p className="text-muted-foreground">
           Manage your account, business and preferences.
         </p>

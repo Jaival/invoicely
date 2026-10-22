@@ -91,7 +91,20 @@ test('pick the Brutal style, saved on the account', async ({ page }) => {
     /<html[^>]*data-style="brutal" data-palette="sunshine"/,
   )
 
+  // Loud turns it up, with a big tilted page title.
+  await expect(html).not.toHaveAttribute('data-strength')
+  await page.getByRole('radio', { name: 'Loud' }).click()
+  await expect(html).toHaveAttribute('data-strength', 'loud')
+  await expect(page.getByRole('heading', { name: 'Settings' })).toHaveCSS(
+    'rotate',
+    '-1.5deg',
+  )
+  await page.getByRole('radio', { name: 'Full' }).click()
+  await expect(html).not.toHaveAttribute('data-strength')
+
   await page.getByRole('radio', { name: 'Clean' }).click()
   await expect(html).not.toHaveAttribute('data-style')
+  // Strength, like the palette, only applies to Brutal.
+  await expect(page.getByRole('radio', { name: 'Loud' })).toBeDisabled()
   await expect(html).toHaveClass(/dark/)
 })

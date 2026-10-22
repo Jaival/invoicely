@@ -71,6 +71,13 @@
       "when": 1792640149761,
       "tag": "0009_business_public_style",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792657158500,
+      "tag": "0010_user_strength",
+      "breakpoints": true
     }
   ]
 }

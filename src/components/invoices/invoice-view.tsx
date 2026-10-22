@@ -1,3 +1,4 @@
+import { loudSticker } from '@/components/app/page-title'
 import { CopyLinkButton } from '@/components/invoices/copy-link-button'
 import {
   DuplicateButton,
@@ -71,7 +72,7 @@ export function InvoiceView({
       <CardHeader className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <CardTitle className="flex items-center gap-3 text-xl">
-            <h1>{invoice.number}</h1>
+            <h1 className={loudSticker}>{invoice.number}</h1>
             <InvoiceStatusBadge status={status} />
           </CardTitle>
           <CardDescription>{descriptions[status]}</CardDescription>

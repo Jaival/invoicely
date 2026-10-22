@@ -27,6 +27,10 @@ const brutalColors: Record<DisplayStatus, string> = {
   void: 'brutal:bg-card brutal:text-foreground',
 }
 
+// Loud tilts badges, every other row the other way.
+const loudTilt =
+  'loud:-rotate-[4deg] loud:shadow-brutal-sm loud:in-[li:nth-child(even)]:rotate-3 loud:in-[tr:nth-child(even)]:rotate-3'
+
 // Printers drop background colors, which would leave light text on white,
 // so badges print as outlines.
 const printed =
@@ -39,6 +43,7 @@ export function InvoiceStatusBadge({ status }: { status: DisplayStatus }) {
       className={cn(
         status === 'void' && 'text-muted-foreground',
         brutalColors[status],
+        loudTilt,
         printed,
       )}
     >

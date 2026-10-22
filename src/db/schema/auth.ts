@@ -25,6 +25,7 @@ export const user = pgTable('user', {
   uiPalette: text('ui_palette', { enum: ['emerald', 'sunshine'] }).default(
     'emerald',
   ),
+  uiStrength: text('ui_strength', { enum: ['full', 'loud'] }).default('full'),
 })
 
 export const session = pgTable(
