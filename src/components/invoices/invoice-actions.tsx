@@ -1,7 +1,7 @@
 'use client'
 
-import { markUnpaid, markVoid } from '@/app/(app)/invoices/actions'
-import { MarkPaidDialog } from '@/components/invoices/invoice-dialogs'
+import { markVoid } from '@/app/(app)/invoices/actions'
+import { RecordPaymentDialog } from '@/components/invoices/invoice-dialogs'
 import { useDuplicateInvoice } from '@/hooks/use-duplicate-invoice'
 import {
   AlertDialog,
@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import type { DisplayStatus } from '@/lib/invoices/status'
+import { isOwed, type DisplayStatus } from '@/lib/invoices/status'
 import { Copy, Loader2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -25,21 +25,28 @@ type InvoiceActionsProps = {
   status: DisplayStatus
   // The business's today, the default payment date.
   today: string
+  currency: string
+  total: number
+  amountPaid: number
 }
 
-// What can happen next to a sent invoice: sent and overdue ones get paid or
-// voided; a paid one can go back to unpaid. Void is final.
-export function InvoiceActions({ id, status, today }: InvoiceActionsProps) {
-  if (status === 'sent' || status === 'overdue') {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <MarkPaid id={id} today={today} />
-        <VoidInvoice id={id} />
-      </div>
-    )
-  }
-  if (status === 'paid') return <MarkUnpaid id={id} />
-  return null
+// What can happen next to a sent invoice: one awaiting payment gets paid,
+// or voided while nothing is paid. Paid and void invoices have nothing
+// next; a payment is taken back from the invoice's payments instead.
+export function InvoiceActions({
+  id,
+  status,
+  amountPaid,
+  total,
+  ...payment
+}: InvoiceActionsProps) {
+  if (!isOwed(status)) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      <RecordPayment id={id} balance={total - amountPaid} {...payment} />
+      {amountPaid === 0 && <VoidInvoice id={id} />}
+    </div>
+  )
 }
 
 // Starts a new draft from this invoice, e.g. for the next month's work.
@@ -53,37 +60,26 @@ export function DuplicateButton({ id }: { id: string }) {
   )
 }
 
-function MarkPaid({ id, today }: { id: string; today: string }) {
+function RecordPayment({
+  id,
+  ...payment
+}: {
+  id: string
+  today: string
+  currency: string
+  balance: number
+}) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Mark as paid</Button>
-      <MarkPaidDialog
+      <Button onClick={() => setOpen(true)}>Record payment</Button>
+      <RecordPaymentDialog
         id={id}
-        today={today}
         open={open}
         onOpenChange={setOpen}
+        {...payment}
       />
     </>
-  )
-}
-
-function MarkUnpaid({ id }: { id: string }) {
-  const [pending, startTransition] = useTransition()
-
-  function onClick() {
-    startTransition(async () => {
-      const result = await markUnpaid(id)
-      if (result.status === 'error') toast.error(result.message)
-      else toast.success('Marked as unpaid')
-    })
-  }
-
-  return (
-    <Button variant="outline" disabled={pending} onClick={onClick}>
-      {pending && <Loader2 className="animate-spin" />}
-      Mark as unpaid
-    </Button>
   )
 }
 

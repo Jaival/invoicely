@@ -6,6 +6,7 @@ const labels: Record<DisplayStatus, string> = {
   draft: 'Draft',
   sent: 'Sent',
   overdue: 'Overdue',
+  partially_paid: 'Part paid',
   paid: 'Paid',
   void: 'Void',
 }
@@ -14,6 +15,7 @@ const variants = {
   draft: 'outline',
   sent: 'secondary',
   overdue: 'destructive',
+  partially_paid: 'outline',
   paid: 'default',
   void: 'outline',
 } as const
@@ -23,6 +25,9 @@ const brutalColors: Record<DisplayStatus, string> = {
   draft: 'brutal:bg-status-draft brutal:text-status-foreground',
   sent: 'brutal:bg-status-sent brutal:text-status-foreground',
   overdue: 'brutal:bg-status-overdue brutal:text-status-foreground',
+  // Half sent, half paid.
+  partially_paid:
+    'brutal:bg-[linear-gradient(135deg,var(--status-paid)_50%,var(--status-sent)_50%)] brutal:text-status-foreground',
   paid: 'brutal:bg-status-paid brutal:text-status-foreground',
   void: 'brutal:bg-card brutal:text-foreground',
 }
@@ -42,6 +47,8 @@ export function InvoiceStatusBadge({ status }: { status: DisplayStatus }) {
       variant={variants[status]}
       className={cn(
         status === 'void' && 'text-muted-foreground',
+        // On its way to paid, in the paid color.
+        status === 'partially_paid' && 'border-primary text-primary',
         brutalColors[status],
         loudTilt,
         printed,

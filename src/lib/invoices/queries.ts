@@ -8,6 +8,7 @@ import {
   invoiceEvent,
   invoiceLine,
   organization,
+  payment,
   type BusinessDetails,
   type InvoiceEventData,
   type InvoiceEventType,
@@ -17,6 +18,7 @@ import {
 import { addDays, daysBetween } from '@/lib/dates'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
+import type { PaymentValues } from '@/lib/invoices/payments'
 import { isPublicToken, newPublicToken } from '@/lib/invoices/public-token'
 import type { DisplayStatus } from '@/lib/invoices/status'
 import { invoiceTotals, type Line } from '@/lib/money'
@@ -28,6 +30,7 @@ import {
   desc,
   eq,
   exists,
+  gt,
   ilike,
   inArray,
   ne,
@@ -73,7 +76,7 @@ const clientName = sql<string>`coalesce(${invoice.clientDetails}->>'name', ${cli
 // The status as shown (see displayStatus), worked out in the database so it
 // can be filtered and counted. today is the business's.
 const displayStatusSql = (today: string) =>
-  sql<DisplayStatus>`case when ${invoice.status} = 'sent' and ${invoice.dueDate} < ${today} then 'overdue' else ${invoice.status} end`
+  sql<DisplayStatus>`case when ${invoice.status} <> 'sent' then ${invoice.status} when ${invoice.dueDate} < ${today} then 'overdue' when ${invoice.amountPaid} > 0 then 'partially_paid' else 'sent' end`
 
 const withClient = and(
   eq(client.organizationId, invoice.organizationId),
@@ -125,6 +128,7 @@ export async function listInvoices(
       dueDate: invoice.dueDate,
       paidOn: invoice.paidOn,
       total: invoice.total,
+      amountPaid: invoice.amountPaid,
       publicToken: invoice.publicToken,
     })
     .from(invoice)
@@ -165,18 +169,19 @@ export async function countInvoicesByStatus(
   ) as Partial<Record<DisplayStatus, number>>
 }
 
-// What the business is owed in each currency: every sent, unpaid invoice,
-// and the overdue part of that. Amounts in different currencies are never
-// added together.
+// What the business is owed in each currency: what's left to pay on every
+// invoice awaiting payment, and the overdue part of that. Amounts in
+// different currencies are never added together.
 export async function outstandingTotals(organizationId: string, today: string) {
   const isOverdue = sql`${invoice.dueDate} < ${today}`
+  const balance = sql`${invoice.total} - ${invoice.amountPaid}`
   return db
     .select({
       currency: invoice.currency,
       // Sums of bigints come back as numeric strings.
-      outstanding: sql`sum(${invoice.total})`.mapWith(Number),
+      outstanding: sql`sum(${balance})`.mapWith(Number),
       overdue:
-        sql`coalesce(sum(${invoice.total}) filter (where ${isOverdue}), 0)`.mapWith(
+        sql`coalesce(sum(${balance}) filter (where ${isOverdue}), 0)`.mapWith(
           Number,
         ),
     })
@@ -297,8 +302,8 @@ export async function deleteDraft(organizationId: string, id: string) {
 
 // Gives a draft the organization's next invoice number, copies the
 // business's and client's current details onto it, and marks it sent.
-// Returns the number, or undefined when there is no such draft or it has no
-// lines.
+// Returns the number, or undefined when there is no such draft or it has
+// nothing to pay.
 export async function markInvoiceSent(organizationId: string, id: string) {
   return db.transaction(async (tx) => {
     // Lock the draft first, so sending it twice at once numbers it once.
@@ -308,6 +313,7 @@ export async function markInvoiceSent(organizationId: string, id: string) {
       .where(
         and(
           withStatus(organizationId, id, 'draft'),
+          gt(invoice.total, 0),
           exists(
             tx
               .select({ id: invoiceLine.id })
@@ -374,45 +380,115 @@ export async function markInvoiceSent(organizationId: string, id: string) {
   })
 }
 
-// Records that a sent invoice was paid, on the given day. Returns false when
-// there is no such sent invoice.
-export async function markInvoicePaid(
+// Records money received against an invoice awaiting payment, and marks
+// it paid once nothing is left. Returns 'paid' or 'recorded', 'too_much'
+// when the amount is more than what's left, or undefined when there is no
+// such invoice awaiting payment.
+export async function recordPayment(
   organizationId: string,
   id: string,
-  paidOn: string,
+  values: PaymentValues,
 ) {
-  return changeStatus(
-    organizationId,
-    id,
-    'sent',
-    { status: 'paid', paidOn },
-    { type: 'paid', data: { paidOn } },
-  )
+  return db.transaction(async (tx) => {
+    // Locked, so two payments at once can't add up to more than the total.
+    const [found] = await tx
+      .select({ total: invoice.total, amountPaid: invoice.amountPaid })
+      .from(invoice)
+      .where(withStatus(organizationId, id, 'sent'))
+      .for('update')
+    if (!found) return undefined
+    const amountPaid = found.amountPaid + values.amount
+    if (amountPaid > found.total) return 'too_much'
+
+    await tx.insert(payment).values({ invoiceId: id, ...values })
+    const paid = amountPaid === found.total
+    await tx
+      .update(invoice)
+      .set(
+        paid
+          ? { amountPaid, status: 'paid', paidOn: await lastPaymentDay(tx, id) }
+          : { amountPaid },
+      )
+      .where(eq(invoice.id, id))
+    await addEvent(tx, id, {
+      type: 'payment_recorded',
+      data: { amount: values.amount, paidOn: values.receivedOn },
+    })
+    return paid ? 'paid' : 'recorded'
+  })
 }
 
-// Undoes marking an invoice paid, e.g. after a payment bounced. Returns
-// false when there is no such paid invoice.
-export async function markInvoiceUnpaid(organizationId: string, id: string) {
-  return changeStatus(
-    organizationId,
-    id,
-    'paid',
-    { status: 'sent', paidOn: null },
-    { type: 'unpaid' },
-  )
+// Takes back a payment recorded by mistake, or one that bounced. A paid
+// invoice is awaiting payment again. Returns false when there is no such
+// payment.
+export async function removePayment(organizationId: string, paymentId: string) {
+  return db.transaction(async (tx) => {
+    const [found] = await tx
+      .select({
+        invoiceId: payment.invoiceId,
+        amount: payment.amount,
+        receivedOn: payment.receivedOn,
+      })
+      .from(payment)
+      .innerJoin(invoice, eq(invoice.id, payment.invoiceId))
+      .where(
+        and(
+          eq(invoice.organizationId, organizationId),
+          eq(payment.id, paymentId),
+        ),
+      )
+      .for('update')
+    if (!found) return false
+
+    await tx.delete(payment).where(eq(payment.id, paymentId))
+    await tx
+      .update(invoice)
+      .set({
+        amountPaid: sql`${invoice.amountPaid} - ${found.amount}`,
+        status: 'sent',
+        paidOn: null,
+      })
+      .where(eq(invoice.id, found.invoiceId))
+    await addEvent(tx, found.invoiceId, {
+      type: 'payment_removed',
+      data: { amount: found.amount, paidOn: found.receivedOn },
+    })
+    return true
+  })
+}
+
+// An invoice's payments, in the order they arrived.
+export async function listPayments(organizationId: string, id: string) {
+  return db
+    .select({
+      id: payment.id,
+      amount: payment.amount,
+      receivedOn: payment.receivedOn,
+      method: payment.method,
+      reference: payment.reference,
+    })
+    .from(payment)
+    .innerJoin(invoice, eq(invoice.id, payment.invoiceId))
+    .where(and(eq(invoice.organizationId, organizationId), eq(invoice.id, id)))
+    .orderBy(asc(payment.receivedOn), asc(payment.createdAt), asc(payment.id))
 }
 
 // Cancels a sent invoice for good. It keeps its number, so the sequence has
-// no gaps. Paid invoices must be marked unpaid first. Returns false when
-// there is no such sent invoice.
+// no gaps. Payments must be removed first. Returns false when there is no
+// such invoice awaiting payment, with nothing paid.
 export async function voidInvoice(organizationId: string, id: string) {
-  return changeStatus(
-    organizationId,
-    id,
-    'sent',
-    { status: 'void', voidedAt: new Date() },
-    { type: 'voided' },
-  )
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(invoice)
+      .set({ status: 'void', voidedAt: new Date() })
+      .where(
+        and(withStatus(organizationId, id, 'sent'), eq(invoice.amountPaid, 0)),
+      )
+      .returning({ id: invoice.id })
+    if (updated.length === 0) return false
+    await addEvent(tx, id, { type: 'voided' })
+    return true
+  })
 }
 
 // Logs that a sent invoice was emailed to its client. Returns false when
@@ -454,25 +530,13 @@ export async function listInvoiceEvents(organizationId: string, id: string) {
     .orderBy(asc(invoiceEvent.createdAt), asc(invoiceEvent.id))
 }
 
-// Moves an invoice from one status to another and logs it, together.
-// Returns false when there is no such invoice in that status.
-async function changeStatus(
-  organizationId: string,
-  id: string,
-  from: InvoiceStatus,
-  values: Partial<typeof invoice.$inferInsert>,
-  event: Event,
-) {
-  return db.transaction(async (tx) => {
-    const updated = await tx
-      .update(invoice)
-      .set(values)
-      .where(withStatus(organizationId, id, from))
-      .returning({ id: invoice.id })
-    if (updated.length === 0) return false
-    await addEvent(tx, id, event)
-    return true
-  })
+// The day the latest of an invoice's payments arrived.
+async function lastPaymentDay(tx: Transaction, invoiceId: string) {
+  const [{ day }] = await tx
+    .select({ day: sql<string>`max(${payment.receivedOn})` })
+    .from(payment)
+    .where(eq(payment.invoiceId, invoiceId))
+  return day
 }
 
 type Event = { type: InvoiceEventType; data?: InvoiceEventData }

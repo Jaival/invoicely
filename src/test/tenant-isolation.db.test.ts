@@ -3,6 +3,7 @@ import * as schema from '@/db/schema'
 import * as authSchema from '@/db/schema/auth'
 import type { ClientValues } from '@/lib/clients/schema'
 import type { BusinessProfileValues } from '@/lib/business-profile'
+import type { PaymentValues } from '@/lib/invoices/payments'
 import { today } from '@/lib/dates'
 import * as clients from '@/lib/clients/queries'
 import * as invoices from '@/lib/invoices/queries'
@@ -27,6 +28,7 @@ const {
   invoiceLine,
   member,
   organization,
+  payment,
   user,
 } = schema
 
@@ -38,6 +40,7 @@ const TODAY = '2026-10-21'
 const ownedThrough: Record<string, string> = {
   invoice_line: 'invoice',
   invoice_event: 'invoice',
+  payment: 'invoice',
 }
 
 describe('schema', () => {
@@ -77,6 +80,7 @@ type Mine = Business & {
   idleClientId: string
   draftId: string
   paidId: string
+  paymentId: string
 }
 
 let mine: Mine
@@ -88,7 +92,15 @@ beforeAll(async () => {
   const draftId = await createInvoice(me.organizationId, me.clientId)
   const paidId = await createInvoice(me.organizationId, me.clientId)
   await invoices.markInvoiceSent(me.organizationId, paidId)
-  await invoices.markInvoicePaid(me.organizationId, paidId, '2026-10-15')
+  const paid = await invoices.getInvoice(me.organizationId, paidId)
+  await invoices.recordPayment(me.organizationId, paidId, {
+    ...paymentValues(),
+    amount: paid!.total,
+  })
+  const [{ id: paymentId }] = await invoices.listPayments(
+    me.organizationId,
+    paidId,
+  )
   mine = {
     ...me,
     idleClientId: await clients.createClient(
@@ -97,6 +109,7 @@ beforeAll(async () => {
     ),
     draftId,
     paidId,
+    paymentId,
   }
   theirs = await business('Their', 'THEIRS', 'UTC')
   before = await snapshot(mine.organizationId)
@@ -244,15 +257,24 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       await invoices.markInvoiceSent(theirs.organizationId, mine.draftId),
     ).toBeUndefined()
   },
-  async markInvoicePaid() {
+  async recordPayment() {
     expect(
-      await invoices.markInvoicePaid(theirs.organizationId, mine.sentId, TODAY),
+      await invoices.recordPayment(
+        theirs.organizationId,
+        mine.sentId,
+        paymentValues(),
+      ),
+    ).toBeUndefined()
+  },
+  async removePayment() {
+    expect(
+      await invoices.removePayment(theirs.organizationId, mine.paymentId),
     ).toBe(false)
   },
-  async markInvoiceUnpaid() {
+  async listPayments() {
     expect(
-      await invoices.markInvoiceUnpaid(theirs.organizationId, mine.paidId),
-    ).toBe(false)
+      await invoices.listPayments(theirs.organizationId, mine.paidId),
+    ).toEqual([])
   },
   async voidInvoice() {
     expect(await invoices.voidInvoice(theirs.organizationId, mine.sentId)).toBe(
@@ -437,10 +459,29 @@ async function snapshot(organizationId: string) {
         ),
       )
       .orderBy(asc(invoiceEvent.id)),
+    payments: await db
+      .select()
+      .from(payment)
+      .where(
+        inArray(
+          payment.invoiceId,
+          invoiceRows.map((row) => row.id),
+        ),
+      )
+      .orderBy(asc(payment.id)),
     counter: await db
       .select()
       .from(invoiceCounter)
       .where(eq(invoiceCounter.organizationId, organizationId)),
+  }
+}
+
+function paymentValues(): PaymentValues {
+  return {
+    amount: 100,
+    receivedOn: TODAY,
+    method: 'bank_transfer',
+    reference: null,
   }
 }
 

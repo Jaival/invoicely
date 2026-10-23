@@ -1,6 +1,7 @@
 import { db } from '@/db'
-import { client, invoice, invoiceCounter } from '@/db/schema'
+import { client, invoice, invoiceCounter, payment } from '@/db/schema'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
+import type { PaymentValues } from '@/lib/invoices/payments'
 import { isPublicToken } from '@/lib/invoices/public-token'
 import type { DisplayStatus } from '@/lib/invoices/status'
 import { createClient, createOrganization } from '@/test/organizations'
@@ -17,11 +18,12 @@ import {
   getPublicInvoice,
   listInvoiceEvents,
   listInvoices,
-  markInvoicePaid,
+  listPayments,
   outstandingTotals,
   markInvoiceSent,
-  markInvoiceUnpaid,
   recordInvoiceEmailed,
+  recordPayment,
+  removePayment,
   updateDraft,
   voidInvoice,
   type InvoiceValues,
@@ -93,6 +95,34 @@ async function createDraft(organizationId: string, clientId: string) {
   const id = await createInvoice(organizationId, values(clientId))
   if (!id) throw new Error('Draft was not created')
   return id
+}
+
+// The total of values(): 180.00 + 34.20 tax + 60.00.
+const TOTAL = 27420
+
+const bankTransfer = (
+  amount: number,
+  receivedOn = '2026-10-15',
+): PaymentValues => ({
+  amount,
+  receivedOn,
+  method: 'bank_transfer',
+  reference: null,
+})
+
+// Records a payment of everything left to pay.
+async function payInFull(
+  organizationId: string,
+  id: string,
+  receivedOn = '2026-10-15',
+) {
+  const found = await getInvoice(organizationId, id)
+  if (!found) throw new Error('No such invoice')
+  return recordPayment(
+    organizationId,
+    id,
+    bankTransfer(found.total - found.amountPaid, receivedOn),
+  )
 }
 
 describe('drafts', () => {
@@ -235,7 +265,7 @@ describe('listInvoices', () => {
     const sent = await send(await create(ada.id, 100))
     const overdue = await send(await create(babbage.id, 300, '2026-10-10'))
     const paid = await send(await create(ada.id, 50))
-    await markInvoicePaid(organizationId, paid, '2026-10-15')
+    await payInFull(organizationId, paid)
     const voided = await send(await create(babbage.id, 200))
     await voidInvoice(organizationId, voided)
     const draft = await create(babbage.id, 400)
@@ -386,6 +416,29 @@ describe('listInvoices', () => {
     ])
   })
 
+  it('counts only what’s left of partly paid invoices', async () => {
+    const all = await oneOfEach()
+    await recordPayment(all.organizationId, all.sent, bankTransfer(2500))
+    await recordPayment(all.organizationId, all.overdue, bankTransfer(10000))
+
+    expect(await outstandingTotals(all.organizationId, TODAY)).toEqual([
+      { currency: 'EUR', outstanding: 27500, overdue: 20000 },
+    ])
+    // Late matters more than part paid.
+    expect(await countInvoicesByStatus(all.organizationId, TODAY)).toEqual({
+      draft: 1,
+      partially_paid: 1,
+      overdue: 1,
+      paid: 1,
+      void: 1,
+    })
+    expect(
+      await listInvoices(all.organizationId, TODAY, {
+        statuses: ['partially_paid'],
+      }).then(ids),
+    ).toEqual([all.sent])
+  })
+
   it('counts the matching invoices in each status', async () => {
     const all = await oneOfEach()
 
@@ -521,7 +574,7 @@ describe('sending', () => {
     expect(listed.clientName).toBe('Test client')
   })
 
-  it('uses the organization�s name when it has no business profile', async () => {
+  it('uses the organization’s name when it has no business profile', async () => {
     const { organizationId, clientId } = await setUp()
     const id = await createDraft(organizationId, clientId)
     await markInvoiceSent(organizationId, id)
@@ -529,6 +582,19 @@ describe('sending', () => {
     expect((await getInvoice(organizationId, id))?.businessDetails).toEqual(
       expect.objectContaining({ name: 'Test business', email: null }),
     )
+  })
+
+  it('refuses a draft with nothing to pay', async () => {
+    const { organizationId, clientId } = await setUp()
+    const id = await createInvoice(organizationId, {
+      ...values(clientId),
+      lines: [{ ...values(clientId).lines[0], unitPrice: 0 }],
+    })
+
+    expect(await markInvoiceSent(organizationId, id!)).toBeUndefined()
+    expect(await getInvoice(organizationId, id!)).toMatchObject({
+      status: 'draft',
+    })
   })
 
   it('refuses a draft with no lines', async () => {
@@ -554,23 +620,95 @@ describe('payment and voiding', () => {
     return { organizationId, id }
   }
 
-  it('marks a sent invoice paid, and back to unpaid', async () => {
+  it('records payments until nothing is left, then marks it paid', async () => {
     const { organizationId, id } = await sentInvoice()
 
-    expect(await markInvoicePaid(organizationId, id, '2026-10-15')).toBe(true)
-    expect(await getInvoice(organizationId, id)).toMatchObject({
-      status: 'paid',
-      paidOn: '2026-10-15',
-    })
-    // Already paid.
-    expect(await markInvoicePaid(organizationId, id, '2026-10-16')).toBe(false)
-
-    expect(await markInvoiceUnpaid(organizationId, id)).toBe(true)
+    expect(await recordPayment(organizationId, id, bankTransfer(10000))).toBe(
+      'recorded',
+    )
     expect(await getInvoice(organizationId, id)).toMatchObject({
       status: 'sent',
+      amountPaid: 10000,
       paidOn: null,
     })
-    expect(await markInvoiceUnpaid(organizationId, id)).toBe(false)
+
+    // Entered late, but it arrived before the first one.
+    expect(
+      await recordPayment(organizationId, id, {
+        ...bankTransfer(TOTAL - 10000, '2026-10-12'),
+        method: 'cash',
+        reference: 'Envelope',
+      }),
+    ).toBe('paid')
+    // Paid on the day the last of it arrived.
+    expect(await getInvoice(organizationId, id)).toMatchObject({
+      status: 'paid',
+      amountPaid: TOTAL,
+      paidOn: '2026-10-15',
+    })
+    expect(await listPayments(organizationId, id)).toEqual([
+      expect.objectContaining({
+        amount: TOTAL - 10000,
+        receivedOn: '2026-10-12',
+        method: 'cash',
+        reference: 'Envelope',
+      }),
+      expect.objectContaining({
+        amount: 10000,
+        receivedOn: '2026-10-15',
+        method: 'bank_transfer',
+        reference: null,
+      }),
+    ])
+
+    // Nothing is left to pay.
+    expect(
+      await recordPayment(organizationId, id, bankTransfer(1)),
+    ).toBeUndefined()
+  })
+
+  it('refuses a payment of more than is left', async () => {
+    const { organizationId, id } = await sentInvoice()
+    await recordPayment(organizationId, id, bankTransfer(TOTAL - 100))
+
+    expect(await recordPayment(organizationId, id, bankTransfer(101))).toBe(
+      'too_much',
+    )
+    expect(await getInvoice(organizationId, id)).toMatchObject({
+      status: 'sent',
+      amountPaid: TOTAL - 100,
+    })
+    expect(await listPayments(organizationId, id)).toHaveLength(1)
+  })
+
+  it('adds up payments made at the same time', async () => {
+    const { organizationId, id } = await sentInvoice()
+
+    const results = await Promise.all([
+      recordPayment(organizationId, id, bankTransfer(TOTAL - 100)),
+      recordPayment(organizationId, id, bankTransfer(TOTAL - 100)),
+    ])
+
+    // One fits; the other would be more than is left.
+    expect(results.toSorted()).toEqual(['recorded', 'too_much'])
+    expect((await getInvoice(organizationId, id))?.amountPaid).toBe(TOTAL - 100)
+  })
+
+  it('removes a payment, so a paid invoice is awaiting payment again', async () => {
+    const { organizationId, id } = await sentInvoice()
+    await recordPayment(organizationId, id, bankTransfer(10000))
+    await payInFull(organizationId, id)
+    const [first] = await listPayments(organizationId, id)
+
+    expect(await removePayment(organizationId, first.id)).toBe(true)
+    expect(await getInvoice(organizationId, id)).toMatchObject({
+      status: 'sent',
+      amountPaid: TOTAL - 10000,
+      paidOn: null,
+    })
+    expect(await listPayments(organizationId, id)).toHaveLength(1)
+    // Already removed.
+    expect(await removePayment(organizationId, first.id)).toBe(false)
   })
 
   it('voids a sent invoice for good, keeping its number', async () => {
@@ -582,24 +720,27 @@ describe('payment and voiding', () => {
     expect(voided?.voidedAt).toBeInstanceOf(Date)
 
     expect(await voidInvoice(organizationId, id)).toBe(false)
-    expect(await markInvoicePaid(organizationId, id, '2026-10-15')).toBe(false)
-    expect(await markInvoiceUnpaid(organizationId, id)).toBe(false)
+    expect(
+      await recordPayment(organizationId, id, bankTransfer(100)),
+    ).toBeUndefined()
   })
 
-  it('only voids invoices that are sent and unpaid', async () => {
+  it('only voids invoices awaiting payment with nothing paid', async () => {
     const { organizationId, id } = await sentInvoice()
-    await markInvoicePaid(organizationId, id, '2026-10-15')
+    await recordPayment(organizationId, id, bankTransfer(100))
+    expect(await voidInvoice(organizationId, id)).toBe(false)
+    await payInFull(organizationId, id)
     expect(await voidInvoice(organizationId, id)).toBe(false)
 
     const other = await setUp()
     const draftId = await createDraft(other.organizationId, other.clientId)
     expect(await voidInvoice(other.organizationId, draftId)).toBe(false)
     expect(
-      await markInvoicePaid(other.organizationId, draftId, '2026-10-15'),
-    ).toBe(false)
+      await recordPayment(other.organizationId, draftId, bankTransfer(100)),
+    ).toBeUndefined()
   })
 
-  it('keeps each status�s dates consistent in the database', async () => {
+  it('keeps each status’s dates consistent in the database', async () => {
     const { id } = await sentInvoice()
 
     await expect(
@@ -613,6 +754,23 @@ describe('payment and voiding', () => {
     ).rejects.toThrow()
     await expect(
       db.update(invoice).set({ clientDetails: null }).where(eq(invoice.id, id)),
+    ).rejects.toThrow()
+  })
+
+  it('keeps what’s paid within the total in the database', async () => {
+    const { id } = await sentInvoice()
+    const set = (values: Partial<typeof invoice.$inferInsert>) =>
+      db.update(invoice).set(values).where(eq(invoice.id, id))
+
+    // Paid in full is paid, not sent.
+    await expect(set({ amountPaid: TOTAL })).rejects.toThrow()
+    await expect(set({ amountPaid: TOTAL + 1 })).rejects.toThrow()
+    await expect(set({ amountPaid: -1 })).rejects.toThrow()
+    await expect(
+      set({ status: 'paid', paidOn: '2026-10-15', amountPaid: 100 }),
+    ).rejects.toThrow()
+    await expect(
+      db.insert(payment).values({ ...bankTransfer(0), invoiceId: id }),
     ).rejects.toThrow()
   })
 })
@@ -632,15 +790,22 @@ describe('activity', () => {
     expect(
       await recordInvoiceEmailed(organizationId, id, 'ada@example.com'),
     ).toBe(true)
-    await markInvoicePaid(organizationId, id, '2026-10-15')
-    await markInvoiceUnpaid(organizationId, id)
+    await recordPayment(organizationId, id, bankTransfer(10000))
+    const [recorded] = await listPayments(organizationId, id)
+    await removePayment(organizationId, recorded.id)
     await voidInvoice(organizationId, id)
 
     expect(await logged(organizationId, id)).toEqual([
       { type: 'sent', data: null },
       { type: 'emailed', data: { to: 'ada@example.com' } },
-      { type: 'paid', data: { paidOn: '2026-10-15' } },
-      { type: 'unpaid', data: null },
+      {
+        type: 'payment_recorded',
+        data: { amount: 10000, paidOn: '2026-10-15' },
+      },
+      {
+        type: 'payment_removed',
+        data: { amount: 10000, paidOn: '2026-10-15' },
+      },
       { type: 'voided', data: null },
     ])
     const [sent] = await listInvoiceEvents(organizationId, id)
@@ -652,7 +817,9 @@ describe('activity', () => {
     const id = await createDraft(organizationId, clientId)
 
     // A draft can't be paid, voided or emailed.
-    expect(await markInvoicePaid(organizationId, id, '2026-10-15')).toBe(false)
+    expect(
+      await recordPayment(organizationId, id, bankTransfer(100)),
+    ).toBeUndefined()
     expect(await voidInvoice(organizationId, id)).toBe(false)
     expect(
       await recordInvoiceEmailed(organizationId, id, 'ada@example.com'),
@@ -661,7 +828,9 @@ describe('activity', () => {
 
     await markInvoiceSent(organizationId, id)
     expect(await markInvoiceSent(organizationId, id)).toBeUndefined()
-    expect(await markInvoiceUnpaid(organizationId, id)).toBe(false)
+    expect(
+      await recordPayment(organizationId, id, bankTransfer(TOTAL + 1)),
+    ).toBe('too_much')
     expect(await logged(organizationId, id)).toEqual([
       { type: 'sent', data: null },
     ])
@@ -673,7 +842,7 @@ describe('duplicating', () => {
     const { organizationId, clientId } = await setUp()
     const id = await createDraft(organizationId, clientId)
     await markInvoiceSent(organizationId, id)
-    await markInvoicePaid(organizationId, id, '2026-10-15')
+    await payInFull(organizationId, id)
 
     const copy = await duplicateInvoice(organizationId, id, '2026-11-05')
 
@@ -691,6 +860,7 @@ describe('duplicating', () => {
       dueDate: '2026-12-05',
       notes: 'Thanks for your business',
       total: original!.total,
+      amountPaid: 0,
       paidOn: null,
       publicToken: null,
     })

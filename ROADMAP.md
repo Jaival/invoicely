@@ -116,8 +116,8 @@ A selectable style next to the current clean look, built so it could become the 
 - [ ] Stripe Connect onboarding (Express accounts) from settings
 - [ ] "Pay now" on the public invoice → Stripe Checkout on the user's connected account
 - [ ] Webhook handler (signature verification, idempotency) → record payment, update status
-- [ ] Manual payment recording (bank transfer, cash)
-- [ ] Partially paid status from recorded payments
+- [x] Manual payment recording (bank transfer, card, cash, cheque), capped at what's left to pay
+- [x] Partially paid status from recorded payments (overdue still wins when late)
 - [ ] Dashboard: outstanding, overdue, paid this month, per currency
 - [ ] E2E: create invoice → send → pay with Stripe test card → status `paid`
 - [ ] Launch checklist: privacy policy, terms, custom domain, backups verified

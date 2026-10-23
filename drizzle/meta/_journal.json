@@ -78,6 +78,13 @@
       "when": 1792657158500,
       "tag": "0010_user_strength",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792777037117,
+      "tag": "0011_payments",
+      "breakpoints": true
     }
   ]
 }

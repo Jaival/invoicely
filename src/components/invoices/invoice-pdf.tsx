@@ -261,6 +261,21 @@ export function InvoicePdf({
               <Text style={b?.heading}>Total</Text>
               <Text style={b?.grandTotalAmount}>{money(totals.total)}</Text>
             </View>
+            {invoice.amountPaid > 0 && (
+              <>
+                <TotalRow
+                  label="Paid"
+                  value={money(-invoice.amountPaid)}
+                  b={b}
+                />
+                <View style={styles.totalRow}>
+                  <Text style={[styles.bold, b?.heading]}>Balance due</Text>
+                  <Text style={[styles.bold, b?.figures]}>
+                    {money(totals.total - invoice.amountPaid)}
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
         )}
 
