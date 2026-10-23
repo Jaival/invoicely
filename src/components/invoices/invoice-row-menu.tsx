@@ -3,7 +3,7 @@
 import { copyLink } from '@/components/invoices/copy-link-button'
 import {
   DeleteDraftDialog,
-  MarkPaidDialog,
+  RecordPaymentDialog,
 } from '@/components/invoices/invoice-dialogs'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,9 +15,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDuplicateInvoice } from '@/hooks/use-duplicate-invoice'
 import { publicInvoiceUrl } from '@/lib/invoices/links'
-import type { DisplayStatus } from '@/lib/invoices/status'
+import { isOwed, type DisplayStatus } from '@/lib/invoices/status'
 import {
-  CircleCheck,
+  Banknote,
   Copy,
   Download,
   Eye,
@@ -36,6 +36,9 @@ type InvoiceRowMenuProps = {
     number: string | null
     clientName: string
     publicToken: string | null
+    currency: string
+    total: number
+    amountPaid: number
   }
   status: DisplayStatus
   // The business's today, the default payment date.
@@ -43,10 +46,10 @@ type InvoiceRowMenuProps = {
 }
 
 // What can be done with an invoice from the list, depending on its status:
-// drafts are edited or deleted, sent ones marked paid, shared or
-// downloaded, and any of them duplicated.
+// drafts are edited or deleted, sent ones paid, shared or downloaded, and
+// any of them duplicated.
 export function InvoiceRowMenu({
-  invoice: { id, number, clientName, publicToken },
+  invoice: { id, number, clientName, publicToken, currency, total, amountPaid },
   status,
   today,
 }: InvoiceRowMenuProps) {
@@ -54,7 +57,7 @@ export function InvoiceRowMenu({
   const [dialog, setDialog] = useState<'paid' | 'delete'>()
   const [duplicating, duplicate] = useDuplicateInvoice(id)
   const draft = status === 'draft'
-  const owed = status === 'sent' || status === 'overdue'
+  const owed = isOwed(status)
   const href = `/invoices/${id}`
 
   return (
@@ -80,8 +83,8 @@ export function InvoiceRowMenu({
           </DropdownMenuItem>
           {owed && (
             <DropdownMenuItem onSelect={() => setDialog('paid')}>
-              <CircleCheck />
-              Mark as paid…
+              <Banknote />
+              Record payment…
             </DropdownMenuItem>
           )}
           {publicToken && (
@@ -120,9 +123,11 @@ export function InvoiceRowMenu({
         </DropdownMenuContent>
       </DropdownMenu>
       {owed && (
-        <MarkPaidDialog
+        <RecordPaymentDialog
           id={id}
           today={today}
+          currency={currency}
+          balance={total - amountPaid}
           open={dialog === 'paid'}
           onOpenChange={(open) => setDialog(open ? 'paid' : undefined)}
         />

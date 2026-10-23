@@ -152,7 +152,7 @@ test('invalid fields are flagged and keep what was typed', async ({ page }) => {
   await expect(page).toHaveURL('/invoices/new')
 })
 
-test('send an invoice, record its payment, then void it', async ({ page }) => {
+test('send an invoice, record payments, then void it', async ({ page }) => {
   await signUp(page)
   await addClient(page, 'Babbage & Co')
   await page.goto('/invoices/new')
@@ -185,27 +185,69 @@ test('send an invoice, record its payment, then void it', async ({ page }) => {
   // Sent invoices can't be edited.
   await expect(page.getByRole('button', { name: 'Save draft' })).toBeHidden()
 
-  await page.getByRole('button', { name: 'Mark as paid' }).click()
+  // Part of it first: no more than is left, and it stays overdue.
+  const recordPayment = page.getByRole('button', { name: 'Record payment' })
+  await recordPayment.click()
+  await expect(dialog.getByLabel('Amount (USD)')).toHaveValue('200.00')
   await expect(dialog.getByLabel('Payment date')).not.toHaveValue('')
-  await dialog.getByRole('button', { name: 'Mark as paid' }).click()
-  await expect(page.getByText('Marked as paid')).toBeVisible()
-  await expect(status).toHaveText('Paid')
-
-  // A mistaken payment can be undone, but a paid invoice can't be voided.
+  await dialog.getByLabel('Amount (USD)').fill('250')
+  await dialog.getByRole('button', { name: 'Record payment' }).click()
+  await expect(
+    dialog.getByText('That’s more than the $200.00 left'),
+  ).toBeVisible()
+  await dialog.getByLabel('Amount (USD)').fill('50')
+  await dialog.getByLabel('Reference (optional)').fill('Deposit')
+  await dialog.getByRole('button', { name: 'Record payment' }).click()
+  await expect(page.getByText('Payment recorded')).toBeVisible()
+  await expect(status).toHaveText('Overdue')
+  await expect(page.locator('dl', { hasText: 'Balance due' })).toContainText(
+    'Balance due$150.00',
+  )
+  // Something is paid, so it can't be voided.
   await expect(page.getByRole('button', { name: 'Void' })).toBeHidden()
-  await page.getByRole('button', { name: 'Mark as unpaid' }).click()
+
+  // Then the rest, which the form offers.
+  await recordPayment.click()
+  await expect(dialog.getByLabel('Amount (USD)')).toHaveValue('150.00')
+  await dialog.getByRole('button', { name: 'Record payment' }).click()
+  // The toast, not the invoice's "Paid in full." description.
+  await expect(page.getByText('Paid in full', { exact: true })).toBeVisible()
+  await expect(status).toHaveText('Paid')
+  await expect(recordPayment).toBeHidden()
+  const payments = page.getByRole('region', { name: 'Payments' })
+  await expect(payments.getByRole('listitem')).toContainText([
+    /Bank transfer · Deposit\s*\$50\.00/,
+    /Bank transfer\s*\$150\.00/,
+  ])
+
+  // Mistaken payments are taken back; with none left it can be voided.
+  for (const amount of ['$50.00', '$150.00']) {
+    const remove = payments.getByRole('button', {
+      name: `Remove the ${amount} payment`,
+    })
+    await remove.click()
+    await dialog.getByRole('button', { name: 'Remove payment' }).click()
+    await expect(remove).toBeHidden()
+  }
   await expect(status).toHaveText('Overdue')
 
   await page.getByRole('button', { name: 'Void' }).click()
   await dialog.getByRole('button', { name: 'Void invoice' }).click()
   await expect(page.getByText('Invoice voided')).toBeVisible()
   await expect(status).toHaveText('Void')
-  await expect(page.getByRole('button', { name: 'Mark as paid' })).toBeHidden()
+  await expect(recordPayment).toBeHidden()
 
   // Every change is logged, oldest first.
   await expect(
     page.getByRole('region', { name: 'Activity' }).getByRole('listitem'),
-  ).toContainText(['Sent', 'Marked paid, received', 'Marked unpaid', 'Voided'])
+  ).toContainText([
+    'Sent',
+    'Payment of $50.00 received',
+    'Payment of $150.00 received',
+    /Payment of \$50\.00 received .* removed/,
+    /Payment of \$150\.00 received .* removed/,
+    'Voided',
+  ])
 
   // Void invoices aren't open; the All tab still lists them.
   await page.goto('/invoices?status=all')
@@ -353,12 +395,12 @@ test('act on invoices from the list', async ({ page }) => {
   // Paid from its row; it leaves the Open tab.
   await page.goto('/invoices')
   await page.getByRole('button', { name: 'Actions for INV-0001' }).click()
-  await page.getByRole('menuitem', { name: 'Mark as paid…' }).click()
+  await page.getByRole('menuitem', { name: 'Record payment…' }).click()
   await page
     .getByRole('alertdialog')
-    .getByRole('button', { name: 'Mark as paid' })
+    .getByRole('button', { name: 'Record payment' })
     .click()
-  await expect(page.getByText('Marked as paid')).toBeVisible()
+  await expect(page.getByText('Paid in full')).toBeVisible()
   await expect(
     page.getByText('Nothing open: every invoice is paid or void.'),
   ).toBeVisible()

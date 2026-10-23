@@ -17,6 +17,7 @@ import {
 import { organization } from './auth'
 import { client } from './clients'
 import { id, timestamps } from './columns'
+import { payment } from './payments'
 
 // Overdue is not stored: it is a sent invoice past its due date (see
 // src/lib/invoices/status.ts).
@@ -75,6 +76,9 @@ export const invoice = pgTable(
     discount: bigint({ mode: 'number' }).notNull().default(0),
     tax: bigint({ mode: 'number' }).notNull().default(0),
     total: bigint({ mode: 'number' }).notNull().default(0),
+    // The sum of its payments (see payment), so the balance is total minus
+    // this.
+    amountPaid: bigint({ mode: 'number' }).notNull().default(0),
     // Copied when sent; drafts show the current details instead.
     businessDetails: jsonb().$type<BusinessDetails>(),
     clientDetails: jsonb().$type<PartyDetails>(),
@@ -82,7 +86,7 @@ export const invoice = pgTable(
     // The secret in the invoice's public link (/i/<token>), for clients who
     // don't sign in. Set when sent, so drafts can't be opened.
     publicToken: text().unique(),
-    // The day the payment arrived, in the business's calendar.
+    // The day the last of the balance arrived, in the business's calendar.
     paidOn: date({ mode: 'string' }),
     voidedAt: timestamp({ withTimezone: true }),
     ...timestamps,
@@ -127,6 +131,12 @@ export const invoice = pgTable(
     check(
       'invoice_paid_on_when_paid',
       sql`(${table.status} = 'paid') = (${table.paidOn} is not null)`,
+    ),
+    // Paid means nothing is left to pay, and only invoices awaiting payment
+    // can have part of it paid. Drafts and void invoices have none.
+    check(
+      'invoice_amount_paid_matches_status',
+      sql`${table.amountPaid} >= 0 and case ${table.status} when 'paid' then ${table.amountPaid} = ${table.total} when 'sent' then ${table.amountPaid} = 0 or ${table.amountPaid} < ${table.total} else ${table.amountPaid} = 0 end`,
     ),
     check(
       'invoice_voided_at_when_void',
@@ -180,15 +190,22 @@ export const invoiceLine = pgTable(
 export const invoiceEventTypes = [
   'sent',
   'emailed',
+  // Marked paid in full, before payments were recorded one by one.
   'paid',
   'unpaid',
+  'payment_recorded',
+  'payment_removed',
   'voided',
 ] as const
 export type InvoiceEventType = (typeof invoiceEventTypes)[number]
 
 // The details an event carries: the address an invoice was emailed to, the
-// day a payment arrived.
-export type InvoiceEventData = { to?: string; paidOn?: string }
+// day a payment arrived and how much it was (in the invoice's currency).
+export type InvoiceEventData = {
+  to?: string
+  paidOn?: string
+  amount?: number
+}
 
 // Added in the same transaction as the change it records, never edited.
 export const invoiceEvent = pgTable(
@@ -209,7 +226,7 @@ export const invoiceEvent = pgTable(
     ),
     check(
       'invoice_event_type_valid',
-      sql`${table.type} in ('sent', 'emailed', 'paid', 'unpaid', 'voided')`,
+      sql`${table.type} in ('sent', 'emailed', 'paid', 'unpaid', 'payment_recorded', 'payment_removed', 'voided')`,
     ),
   ],
 )
@@ -225,6 +242,7 @@ export const invoiceRelations = relations(invoice, ({ one, many }) => ({
   }),
   lines: many(invoiceLine),
   events: many(invoiceEvent),
+  payments: many(payment),
 }))
 
 export const invoiceLineRelations = relations(invoiceLine, ({ one }) => ({

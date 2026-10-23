@@ -4,12 +4,18 @@ import type { listInvoiceEvents } from '@/lib/invoices/queries'
 
 type InvoiceActivityProps = {
   events: Awaited<ReturnType<typeof listInvoiceEvents>>
+  // The invoice's, for payment amounts.
+  currency: string
   // The business's, so times read as its clock did.
   timeZone: string
 }
 
 // What has happened to the invoice since it was sent, oldest first.
-export function InvoiceActivity({ events, timeZone }: InvoiceActivityProps) {
+export function InvoiceActivity({
+  events,
+  currency,
+  timeZone,
+}: InvoiceActivityProps) {
   return (
     <section aria-labelledby="invoice-activity" className="text-sm">
       <h2 id="invoice-activity" className="mb-3 text-muted-foreground">
@@ -21,7 +27,7 @@ export function InvoiceActivity({ events, timeZone }: InvoiceActivityProps) {
             key={event.id}
             className="flex flex-wrap justify-between gap-x-4 gap-y-0.5"
           >
-            <span>{describeEvent(event)}</span>
+            <span>{describeEvent(event, currency)}</span>
             <time
               dateTime={event.createdAt.toISOString()}
               className="font-figures text-muted-foreground tabular-nums"

@@ -13,7 +13,7 @@ const listViews: readonly ListView[] = [...listTabs, ...otherViews]
 
 // The statuses each view shows; every status for All.
 export const viewStatuses: Record<ListView, DisplayStatus[] | undefined> = {
-  open: ['draft', 'sent', 'overdue'],
+  open: ['draft', 'sent', 'partially_paid', 'overdue'],
   overdue: ['overdue'],
   draft: ['draft'],
   paid: ['paid'],

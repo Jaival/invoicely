@@ -5,6 +5,7 @@ import {
   InvoiceActions,
 } from '@/components/invoices/invoice-actions'
 import { InvoiceActivity } from '@/components/invoices/invoice-activity'
+import { InvoicePayments } from '@/components/invoices/invoice-payments'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { InvoiceTotalsList } from '@/components/invoices/invoice-totals'
 import { Button } from '@/components/ui/button'
@@ -27,7 +28,11 @@ import {
 } from '@/components/ui/table'
 import type { PartyDetails } from '@/db/schema'
 import { formatDate, today } from '@/lib/dates'
-import type { getInvoice, listInvoiceEvents } from '@/lib/invoices/queries'
+import type {
+  getInvoice,
+  listInvoiceEvents,
+  listPayments,
+} from '@/lib/invoices/queries'
 import { publicInvoiceUrl } from '@/lib/invoices/links'
 import { partyLines } from '@/lib/invoices/party'
 import { displayStatus, type DisplayStatus } from '@/lib/invoices/status'
@@ -50,6 +55,7 @@ type InvoiceViewProps = {
 const descriptions: Partial<Record<DisplayStatus, string>> = {
   sent: 'Awaiting payment.',
   overdue: 'Past its due date and still unpaid.',
+  partially_paid: 'Partly paid, awaiting the rest.',
   paid: 'Paid in full.',
   void: 'Voided: no longer owed.',
 }
@@ -59,9 +65,11 @@ const descriptions: Partial<Record<DisplayStatus, string>> = {
 export function InvoiceView({
   invoice,
   events,
+  payments,
   timeZone,
 }: InvoiceViewProps & {
   events: Awaited<ReturnType<typeof listInvoiceEvents>>
+  payments: Awaited<ReturnType<typeof listPayments>>
 }) {
   const businessToday = today(timeZone)
   const status = displayStatus(invoice, businessToday)
@@ -93,15 +101,28 @@ export function InvoiceView({
             id={invoice.id}
             status={status}
             today={businessToday}
+            currency={invoice.currency}
+            total={invoice.total}
+            amountPaid={invoice.amountPaid}
           />
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-8">
         <InvoiceDocument invoice={invoice} timeZone={timeZone} />
+        {payments.length > 0 && (
+          <>
+            <Separator />
+            <InvoicePayments payments={payments} currency={invoice.currency} />
+          </>
+        )}
         {events.length > 0 && (
           <>
             <Separator />
-            <InvoiceActivity events={events} timeZone={timeZone} />
+            <InvoiceActivity
+              events={events}
+              currency={invoice.currency}
+              timeZone={timeZone}
+            />
           </>
         )}
       </CardContent>
@@ -189,6 +210,7 @@ export function InvoiceDocument({ invoice, timeZone }: InvoiceViewProps) {
       <InvoiceTotalsList
         totals={invoiceTotals(invoice.lines)}
         currency={invoice.currency}
+        amountPaid={invoice.amountPaid}
       />
       {(invoice.notes || invoice.terms) && (
         <>

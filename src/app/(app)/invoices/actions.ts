@@ -5,10 +5,10 @@ import {
   deleteDraft,
   duplicateInvoice,
   getInvoice,
-  markInvoicePaid,
   markInvoiceSent,
-  markInvoiceUnpaid,
   recordInvoiceEmailed,
+  recordPayment,
+  removePayment,
   updateDraft,
   voidInvoice,
 } from '@/lib/invoices/queries'
@@ -18,7 +18,8 @@ import {
   type InvoiceInput,
 } from '@/lib/invoices/schema'
 import { emailInvoice } from '@/lib/invoices/email'
-import { paymentDateError } from '@/lib/invoices/status'
+import { parsePayment, type PaymentInput } from '@/lib/invoices/payments'
+import { invoiceTotals } from '@/lib/money'
 import { businessToday } from '@/lib/organization'
 import { requireOrganizationId } from '@/lib/session'
 import { isUuid } from '@/lib/validation'
@@ -59,6 +60,15 @@ export async function sendInvoice(
   const organizationId = await requireOrganizationId()
   const saved = await save(organizationId, id, input)
   if (saved.status !== 'success' || !saved.id) return saved
+  // Saved, so it parses. The draft is kept either way.
+  const { lines } = invoiceSchema.parse(input)
+  if (!invoiceTotals(lines)?.total) {
+    return {
+      status: 'error',
+      message: 'There’s nothing to pay on this invoice yet.',
+      id: saved.id,
+    }
+  }
 
   const number = await markInvoiceSent(organizationId, saved.id)
   if (!number) return { status: 'error', message: gone }
@@ -94,26 +104,48 @@ export async function removeDraft(id: string): Promise<InvoiceFormState> {
   return { status: 'success' }
 }
 
-export async function markPaid(
+// Records money received against an invoice awaiting payment.
+export async function addPayment(
   id: string,
-  paidOn: string,
-): Promise<InvoiceFormState> {
+  input: PaymentInput,
+): Promise<InvoiceFormState & { paid?: boolean }> {
   const organizationId = await requireOrganizationId()
-  const error = paymentDateError(paidOn, await businessToday(organizationId))
-  if (error) {
-    return { status: 'error', message: error, fieldErrors: { paidOn: error } }
+  const notOwed = 'This invoice isn’t awaiting payment.'
+  const owed = isUuid(id) ? await getInvoice(organizationId, id) : undefined
+  if (owed?.status !== 'sent') return { status: 'error', message: notOwed }
+
+  const parsed = parsePayment(
+    input,
+    { currency: owed.currency, balance: owed.total - owed.amountPaid },
+    await businessToday(organizationId),
+  )
+  if (parsed.fieldErrors) {
+    return {
+      status: 'error',
+      message: 'Check the highlighted fields.',
+      fieldErrors: parsed.fieldErrors,
+    }
   }
-  if (!isUuid(id) || !(await markInvoicePaid(organizationId, id, paidOn))) {
-    return { status: 'error', message: 'This invoice isn’t awaiting payment.' }
+  const result = await recordPayment(organizationId, id, parsed.values)
+  if (!result) return { status: 'error', message: notOwed }
+  if (result === 'too_much') {
+    // Another payment arrived since the form opened.
+    return {
+      status: 'error',
+      message: 'That’s more than is left to pay now.',
+      fieldErrors: { amount: 'That’s more than is left to pay' },
+    }
   }
   refresh()
-  return { status: 'success' }
+  return { status: 'success', paid: result === 'paid' }
 }
 
-export async function markUnpaid(id: string): Promise<InvoiceFormState> {
+export async function deletePayment(
+  paymentId: string,
+): Promise<InvoiceFormState> {
   const organizationId = await requireOrganizationId()
-  if (!isUuid(id) || !(await markInvoiceUnpaid(organizationId, id))) {
-    return { status: 'error', message: 'This invoice isn’t marked paid.' }
+  if (!isUuid(paymentId) || !(await removePayment(organizationId, paymentId))) {
+    return { status: 'error', message: 'This payment was already removed.' }
   }
   refresh()
   return { status: 'success' }
@@ -124,7 +156,7 @@ export async function markVoid(id: string): Promise<InvoiceFormState> {
   if (!isUuid(id) || !(await voidInvoice(organizationId, id))) {
     return {
       status: 'error',
-      message: 'Only sent, unpaid invoices can be voided.',
+      message: 'Only invoices with nothing paid can be voided.',
     }
   }
   refresh()
