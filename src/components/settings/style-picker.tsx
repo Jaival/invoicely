@@ -4,6 +4,7 @@ import { saveAppearance } from '@/app/(app)/settings/appearance/actions'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Appearance, Palette, Strength, Style } from '@/lib/appearance'
+import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
@@ -28,6 +29,7 @@ export function StylePicker({ saved }: { saved: Appearance }) {
   // Shows the choice right away; the page restyles once it's saved.
   const [appearance, setAppearance] = useState(saved)
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
 
   function choose(next: Partial<Appearance>) {
     const previous = appearance
@@ -38,7 +40,10 @@ export function StylePicker({ saved }: { saved: Appearance }) {
       if (error) {
         setAppearance(previous)
         toast.error(error)
+        return
       }
+      // The root layout applies the style; render it again.
+      router.refresh()
     })
   }
 

@@ -9,8 +9,9 @@ export const getSession = cache(async () =>
   auth.api.getSession({ headers: await headers() }),
 )
 
-// For pages that need a signed-in user. The proxy only checks that a session
-// cookie exists; this validates it against the database.
+// For pages that need a signed-in user. Nothing else gates the signed-in
+// routes, so every page, route handler and action calls this (or
+// requireOrganizationId) itself.
 export async function requireSession() {
   const session = await getSession()
   if (!session) redirect('/sign-in')

@@ -9,6 +9,5 @@ export async function register() {
   }
 }
 
-// Reports errors from Server Components, route handlers, server actions and
-// the proxy.
+// Reports errors from Server Components, route handlers, and server actions.
 export const onRequestError = Sentry.captureRequestError
