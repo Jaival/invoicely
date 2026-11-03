@@ -19,7 +19,5 @@ export default withSentryConfig(nextConfig, {
   // Uploads source maps on production builds. Without it, upload is skipped.
   authToken: process.env.SENTRY_AUTH_TOKEN,
   widenClientFileUpload: true,
-  // Sends browser events through the app so ad blockers don't drop them.
-  tunnelRoute: '/monitoring',
   silent: !process.env.CI,
 })

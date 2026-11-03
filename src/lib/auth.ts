@@ -60,6 +60,10 @@ export const auth = betterAuth({
       },
     },
   },
+  // Session reads come from a signed cookie for 5 minutes instead of the
+  // database on every render. Code that changes user fields outside Better
+  // Auth's endpoints must refresh it; see saveAppearance.
+  session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
   // Better Auth passes the error, if any, as an argument or under `error`.
   logger: {
     log: (level, message, ...args) => {

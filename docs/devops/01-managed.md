@@ -141,7 +141,7 @@ writes each email to a JSON file that the tests read.
 ### Sentry
 
 1. In [Sentry](https://jaival.sentry.io) (EU region), the `invoicely` project (platform Next.js)
-   receives errors, traces and session replays from the browser, the Node.js server and the proxy.
+   receives errors, traces and session replays from the browser and the Node.js server.
 2. Copy its DSN (**Project Settings → Client Keys**) into `NEXT_PUBLIC_SENTRY_DSN`, in Vercel
    **Production** and **Preview** and in `.env.local`. The DSN is public by design. Without it,
    Sentry is off, which keeps CI and E2E runs out of the project.
@@ -152,7 +152,7 @@ writes each email to a JSON file that the tests read.
 Events are tagged with the release (commit SHA) and an environment from Vercel's system variables:
 `production` or `preview`, or `local` for anything run on your machine (including local E2E runs
 against `next start`). Filter by environment in Sentry to keep local noise out. Browser events go
-through the `/monitoring` tunnel route so ad blockers don't drop them.
+straight to Sentry, not through the app, so they cost no function time. Ad blockers may drop some.
 
 Server code logs through `log` from `src/lib/logger.ts`, never `console`. Each entry goes to
 **Sentry → Explore → Logs** with its attributes, linked to the request's trace, and to Vercel's

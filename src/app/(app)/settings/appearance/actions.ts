@@ -3,7 +3,7 @@
 import { appearanceSchema, type Appearance } from '@/lib/appearance'
 import { auth } from '@/lib/auth'
 import { requireSession } from '@/lib/session'
-import { refresh } from 'next/cache'
+import { headers } from 'next/headers'
 
 export async function saveAppearance(
   values: Appearance,
@@ -20,7 +20,13 @@ export async function saveAppearance(
     uiPalette: parsed.data.palette,
     uiStrength: parsed.data.strength,
   })
-  // The root layout applies the style; render it again.
-  refresh()
+  // Read straight from the database, which re-writes the cached session
+  // cookie. getSession() would return the memoized stale value. The picker
+  // then refreshes the page in a new request, so the root layout reads the
+  // new cookie; a refresh() here would still see the old one.
+  await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  })
   return {}
 }
