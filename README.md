@@ -47,6 +47,21 @@ Keep migrations backward compatible: the previous deployment keeps serving while
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Run with Docker
+
+Runs the app against a local Postgres 18. No Bun or Node needed on the host.
+
+```bash
+cp .env.example .env         # then set BETTER_AUTH_SECRET (openssl rand -base64 32)
+docker compose up --build
+```
+
+Open [http://localhost:3000](http://localhost:3000). Compose starts `db`, runs the one-shot `migrate` service once `db` is healthy, then starts `web`. Compose sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` for the containers, so the values in `.env` for those two are ignored. Google sign-in stays off until its keys are in `.env`.
+
+The `web` image is multi-stage, runs as the non-root `node` user and holds no secrets. Size: 453 MB, against 3.74 GB for a single-stage build that ships the whole build tree.
+
+Stop with `docker compose down`; add `-v` to delete the database volume.
+
 ## Scripts
 
 | Command                 | What it does                             |
