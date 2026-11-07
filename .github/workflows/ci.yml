@@ -63,6 +63,28 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - name: Build runtime image (not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build migrate image (not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrate
+          push: false
+          cache-from: type=gha
+
   e2e:
     name: E2E (Playwright)
     needs: check
