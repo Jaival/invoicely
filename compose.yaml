@@ -1,0 +1,49 @@
+# Local run: Postgres, a one-shot migration, then the web app.
+# Usage: cp .env.example .env, fill BETTER_AUTH_SECRET, docker compose up --build
+name: invoicely
+
+x-db-url: &db-url postgres://postgres:postgres@db:5432/invoicely
+
+# Postgres 18, not 17: the migrations use uuidv7(), new in 18.
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: invoicely
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d invoicely']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: *db-url
+      DATABASE_URL_UNPOOLED: *db-url
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  web:
+    build:
+      context: .
+      target: runtime
+    env_file: .env
+    environment:
+      DATABASE_URL: *db-url
+      DATABASE_URL_UNPOOLED: *db-url
+    ports:
+      - '3000:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

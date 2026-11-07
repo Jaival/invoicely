@@ -5,6 +5,8 @@ import './src/env/client'
 import './src/env/server'
 
 const nextConfig: NextConfig = {
+  // Self-contained server in .next/standalone, for the Docker image.
+  output: 'standalone',
   // Fonts the invoice PDF embeds, read from disk when it renders: for the
   // PDF downloads and for the copy attached to invoice emails.
   outputFileTracingIncludes: {

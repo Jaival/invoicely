@@ -1,0 +1,21 @@
+node_modules
+.next
+.git
+.github
+.husky
+.claude
+.vercel
+.mockups
+.email-outbox
+.env*
+!.env.example
+e2e/*
+# playwright.config.ts imports this and the build type-checks that file
+!e2e/outbox.ts
+coverage
+test-results
+playwright-report
+*.tsbuildinfo
+Dockerfile
+compose.yaml
+.dockerignore

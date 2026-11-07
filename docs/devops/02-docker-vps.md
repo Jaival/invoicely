@@ -29,9 +29,9 @@ GitHub Actions ── build & push ──▶ GHCR (container registry)
 
 ## Steps
 
-1. [ ] Set `output: 'standalone'` in `next.config` and write a multi-stage `Dockerfile`
+1. [x] Set `output: 'standalone'` in `next.config` and write a multi-stage `Dockerfile`
 2. [ ] Add a worker entrypoint that starts pg-boss consumers
-3. [ ] Write `compose.yaml` for local dev (web, worker, postgres) and `compose.prod.yaml`
+3. [x] Write `compose.yaml` for local dev (web, postgres; the worker joins in step 2) and `compose.prod.yaml`
 4. [ ] Provision a VPS (e.g. Hetzner, DigitalOcean): non-root user, SSH keys only, `ufw`, automatic security updates
 5. [ ] Install Docker; add Caddy as the reverse proxy with automatic HTTPS
 6. [ ] CI: build the image, tag it with the git SHA, push to GitHub Container Registry
