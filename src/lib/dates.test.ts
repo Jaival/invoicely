@@ -7,6 +7,7 @@ import {
   formatDateTime,
   formatShortDate,
   isTimeZone,
+  monthOf,
   timeZoneLabel,
   today,
 } from './dates'
@@ -61,6 +62,22 @@ describe('dates', () => {
     expect(plain(formatDateTime(moment, 'Europe/Berlin'))).toBe(
       'Oct 21, 2026, 12:30 AM',
     )
+  })
+
+  it('gives the month a date falls in', () => {
+    expect(monthOf('2026-10-21')).toEqual({
+      from: '2026-10-01',
+      to: '2026-11-01',
+    })
+    expect(monthOf('2026-10-01')).toEqual({
+      from: '2026-10-01',
+      to: '2026-11-01',
+    })
+    // December runs into the next year.
+    expect(monthOf('2026-12-31')).toEqual({
+      from: '2026-12-01',
+      to: '2027-01-01',
+    })
   })
 
   it('recognises IANA time zones', () => {

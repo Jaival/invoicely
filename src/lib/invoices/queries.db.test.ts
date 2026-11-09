@@ -3,6 +3,7 @@ import { client, invoice, invoiceCounter, payment } from '@/db/schema'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import type { PaymentValues } from '@/lib/invoices/payments'
 import { isPublicToken } from '@/lib/invoices/public-token'
+import { today as todayIn } from '@/lib/dates'
 import type { DisplayStatus } from '@/lib/invoices/status'
 import { createClient, createOrganization } from '@/test/organizations'
 import { eq } from 'drizzle-orm'
@@ -21,6 +22,7 @@ import {
   listPayments,
   outstandingTotals,
   markInvoiceSent,
+  paidThisMonth,
   recordInvoiceEmailed,
   recordPayment,
   removePayment,
@@ -772,6 +774,75 @@ describe('payment and voiding', () => {
     await expect(
       db.insert(payment).values({ ...bankTransfer(0), invoiceId: id }),
     ).rejects.toThrow()
+  })
+})
+
+describe('paidThisMonth', () => {
+  // Sent invoices of 274.20 in each currency, for one business.
+  async function sentIn(...currencies: string[]) {
+    const { organizationId, clientId } = await setUp()
+    const sent: Record<string, string> = {}
+    for (const currency of currencies) {
+      const id = await createInvoice(organizationId, {
+        ...values(clientId),
+        currency,
+      })
+      await markInvoiceSent(organizationId, id!)
+      sent[currency] = id!
+    }
+    return { organizationId, sent }
+  }
+
+  it('adds up the month�s payments in each currency, part ones too', async () => {
+    const { organizationId, sent } = await sentIn('EUR', 'JPY', 'USD')
+    await recordPayment(organizationId, sent.EUR, bankTransfer(2500))
+    await recordPayment(organizationId, sent.EUR, bankTransfer(24920))
+    await recordPayment(organizationId, sent.JPY, bankTransfer(500))
+    // Last month's doesn't count.
+    await recordPayment(
+      organizationId,
+      sent.USD,
+      bankTransfer(1000, '2026-09-30'),
+    )
+
+    expect(await paidThisMonth(organizationId, TODAY)).toEqual([
+      { currency: 'EUR', paid: 27420 },
+      { currency: 'JPY', paid: 500 },
+    ])
+    expect(await paidThisMonth(organizationId, '2026-09-30')).toEqual([
+      { currency: 'USD', paid: 1000 },
+    ])
+  })
+
+  it('starts the month at midnight where the business is', async () => {
+    const { organizationId, sent } = await sentIn('EUR')
+    await recordPayment(
+      organizationId,
+      sent.EUR,
+      bankTransfer(1000, '2026-10-31'),
+    )
+    await recordPayment(
+      organizationId,
+      sent.EUR,
+      bankTransfer(200, '2026-11-01'),
+    )
+    // Noon UTC on Oct 31 is already Nov 1 in Kiritimati (UTC+14), so only
+    // November's payment counts there, and only October's in UTC.
+    const moment = new Date('2026-10-31T12:00:00Z')
+    expect(
+      await paidThisMonth(
+        organizationId,
+        todayIn('Pacific/Kiritimati', moment),
+      ),
+    ).toEqual([{ currency: 'EUR', paid: 200 }])
+    expect(await paidThisMonth(organizationId, todayIn('UTC', moment))).toEqual(
+      [{ currency: 'EUR', paid: 1000 }],
+    )
+  })
+
+  it('is empty when nothing arrived this month', async () => {
+    const { organizationId } = await sentIn('EUR')
+    expect(await paidThisMonth(organizationId, TODAY)).toEqual([])
   })
 })
 
