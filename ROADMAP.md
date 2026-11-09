@@ -3,35 +3,36 @@
 Invoicely is a learning project that aims to become a real product: a polished invoicing SaaS for
 freelancers (teams later), built with production-grade practices and a progressive DevOps track.
 
-Time estimates assume **~5–10 hours/week**.
+Phases have no time estimates: the first ones took days, not weeks. Each phase ends with a "Done when".
 
 ## Decisions
 
-| Area            | Choice                                                                          |
-| --------------- | ------------------------------------------------------------------------------- |
-| Framework       | Next.js (App Router), upgraded in place from 14.0.4                             |
-| Package manager | Bun                                                                             |
-| UI              | Tailwind CSS v4, shadcn/ui, next-themes                                         |
-| Brand           | "Receipt" logo; shadcn theme: Neutral (light) / Slate (dark), Emerald, radius 0 |
-| Database        | Postgres + Drizzle ORM                                                          |
-| Auth            | Better Auth (organizations plugin when teams arrive)                            |
-| Tenancy         | Solo first, schema is organization-ready from day one                           |
-| Payments        | Stripe Connect (users' clients pay users directly)                              |
-| SaaS billing    | Freemium subscription via Stripe Billing (post-MVP)                             |
-| File storage    | Vercel Blob (business logos); S3 from the AWS stage                             |
-| Email           | Resend + React Email                                                            |
-| PDF             | `@react-pdf/renderer`                                                           |
-| Background jobs | pg-boss (queue inside Postgres)                                                 |
-| Money           | Per-invoice currency, amounts as integer minor units, per-line tax % + discount |
-| Testing         | Vitest (unit) + Playwright (E2E), run in GitHub Actions                         |
-| Observability   | Sentry + structured logs → uptime checks → Prometheus/Grafana                   |
-| DevOps track    | Managed → Docker/VPS → AWS + Terraform → Kubernetes ([guides](docs/devops/))    |
+| Area            | Choice                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------- |
+| Framework       | Next.js (App Router), upgraded in place from 14.0.4                                                           |
+| Package manager | Bun                                                                                                           |
+| UI              | Tailwind CSS v4, shadcn/ui, next-themes                                                                       |
+| Brand           | "Receipt" logo; shadcn theme: Neutral (light) / Slate (dark), Emerald, radius 0                               |
+| Database        | Postgres + Drizzle ORM                                                                                        |
+| Auth            | Better Auth (organizations plugin when teams arrive)                                                          |
+| Tenancy         | Solo first, schema is organization-ready from day one                                                         |
+| Payments        | Stripe Connect, direct charges on accounts with the full Stripe Dashboard (users' clients pay users directly) |
+| SaaS billing    | Freemium subscription via Stripe Billing (post-MVP)                                                           |
+| File storage    | Vercel Blob (business logos); S3 from the AWS stage                                                           |
+| Email           | Resend + React Email                                                                                          |
+| PDF             | `@react-pdf/renderer`                                                                                         |
+| Background jobs | Vercel Cron first; pg-boss (queue inside Postgres) once the worker exists                                     |
+| Money           | Per-invoice currency, amounts as integer minor units, per-line tax % + discount                               |
+| Testing         | Vitest (unit) + Playwright (E2E), run in GitHub Actions                                                       |
+| Observability   | Sentry + structured logs → uptime checks → Prometheus/Grafana                                                 |
+| Hosting         | Vercel + Neon in production; each DevOps stage runs as a mirror until it is clearly better                    |
+| DevOps track    | Managed → Docker/VPS → AWS + Terraform → Kubernetes ([guides](docs/devops/))                                  |
 
 DevOps stages are interleaved with feature work so the app is live from Phase 0 onward.
 
 ---
 
-## Phase 0 — Foundation & first deploy (1–2 weeks) · DevOps stage 1
+## Phase 0 — Foundation & first deploy · DevOps stage 1
 
 - [x] Switch to Bun: commit `bun.lock`, delete `package-lock.json`, update README commands
 - [x] Replace Windows-only `clean`/`rebuild` scripts with cross-platform ones
@@ -47,7 +48,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 
 **Done when:** a PR runs green CI and merging to `main` deploys a live URL.
 
-## Phase 1 — Auth, data model & business profile (2 weeks)
+## Phase 1 — Auth, data model & business profile
 
 - [x] Drizzle setup: schema folder, migrations, seed script
 - [x] Core tables: `user`, `organization`, `member` (one auto-created org per user), `business_profile`
@@ -59,7 +60,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Structured server logging
 - [x] E2E: sign up → verify → complete profile
 
-## Phase 2 — Clients & invoices (3 weeks)
+## Phase 2 — Clients & invoices
 
 - [x] Clients CRUD (name, email, address, tax ID, notes)
 - [x] Invoices: number sequence per org, issue/due dates, currency, notes, terms
@@ -69,7 +70,7 @@ DevOps stages are interleaved with feature work so the app is live from Phase 0 
 - [x] Invoice list with filters, search, and sort
 - [x] Every query scoped by organization (tenant isolation tests)
 
-## Phase 3 — PDF & email delivery (2 weeks)
+## Phase 3 — PDF & email delivery
 
 - [x] Default invoice template with `@react-pdf/renderer`
 - [x] PDF download route
@@ -111,64 +112,126 @@ A selectable style next to the current clean look, built so it could become the 
 - [x] Brutal dark
 - [x] Strength: Full, or Loud (dotted paper, big tilted titles, tilted badges, a "late" sticker), screens only
 
-## Phase 4 — Payments & tracking (2–3 weeks) → **MVP v1.0**
+## Phase 4 — Payments & tracking → **MVP v1.0**
 
-- [ ] Stripe Connect onboarding (Express accounts) from settings
-- [ ] "Pay now" on the public invoice → Stripe Checkout on the user's connected account
-- [ ] Webhook handler (signature verification, idempotency) → record payment, update status
-- [x] Manual payment recording (bank transfer, card, cash, cheque), capped at what's left to pay
-- [x] Partially paid status from recorded payments (overdue still wins when late)
-- [ ] Dashboard: outstanding, overdue, paid this month, per currency
-- [ ] E2E: create invoice → send → pay with Stripe test card → status `paid`
-- [ ] Launch checklist: privacy policy, terms, custom domain, backups verified
+Until v1.0, new style and polish ideas go to the backlog. Build the steps in this order.
+
+1. **Domain and email** (user steps, blocking): without email, production has no email verification,
+   no password reset, and "Send" reaches no one.
+   - [ ] Buy the domain and point it at Vercel
+   - [ ] Verify the domain in Resend; set `RESEND_API_KEY` and `EMAIL_FROM` on Vercel (production + preview)
+   - [ ] Check sign-up verification, password reset and the invoice email end to end in production
+2. **Dashboard** (no blockers, build it while the Stripe account is set up)
+   - [ ] Outstanding, overdue, paid this month, per currency
+   - [ ] Fix the flaky "search, filter and sort" E2E test (~36s against a 30s timeout)
+3. **Payment model for Stripe** (expand-only migration)
+   - [ ] `payment.source` (`manual` / `stripe`) and a unique Stripe payment intent ID
+   - [ ] `stripe_event` table: each webhook event is handled once
+   - [ ] Paid invoices allow `amount_paid >= total` (see the overpayment policy below)
+   - [ ] Payments from Stripe can't be removed by hand; refunds come from Stripe
+4. **Stripe Connect onboarding** (user step first: a Stripe test account with Connect enabled)
+   - [ ] Connected accounts with the full Stripe Dashboard; Stripe is responsible for losses and its fees
+   - [ ] Onboarding from settings; `account.updated` keeps the account status current
+5. **Pay now** (one PR: Checkout and the webhook ship together)
+   - [ ] "Pay now" on the public invoice → Stripe Checkout as a direct charge on the user's account,
+         for the balance at that moment, expiring in 30–60 minutes; hidden once the balance is 0
+   - [ ] Open sessions expire when a payment is recorded by hand, or the invoice is edited or voided
+   - [ ] Webhook with signature verification: `checkout.session.completed`,
+         `checkout.session.async_payment_succeeded` / `_failed`, `charge.refunded`, `charge.dispute.*`
+   - [ ] Only the webhook writes payments; the success page only reads
+   - [ ] Sentry alert when webhook handling fails
+6. **Payment tests**
+   - [ ] Webhook handler tests with signed fixture events in the DB suite
+   - [ ] A script that runs the Stripe CLI listener against the local app
+   - [ ] One manual run with a test card on a stable staging URL (Vercel protection bypass for Stripe)
+7. **Launch checklist**
+   - [ ] Privacy policy and terms
+   - [ ] Account deletion and data export
+   - [ ] Better Auth rate limiting on a shared store (in-memory limits are per instance on serverless)
+   - [ ] Neon restore window checked on the current plan, and one restore done into a new branch
+   - [ ] Security headers
+   - [ ] Stripe live mode activated
+   - [ ] README lists only features that exist
 
 **MVP v1.0 is done when** a freelancer can sign up, invoice a client, and get paid online.
 
-## Phase 5 — Docker + VPS + CI/CD (2–3 weeks) · DevOps stage 2
+### Stripe Connect setup
 
-See [02-docker-vps](docs/devops/02-docker-vps.md).
+Invoicely is software; the freelancer is the merchant. Charges are direct charges on the user's
+connected account, so the client's statement shows the freelancer, and refunds, disputes and payouts
+happen in the user's own Stripe Dashboard. Stripe, not Invoicely, is responsible for negative balances.
+Invoicely only mirrors refunds and disputes onto the invoice. No platform fee in v1; revenue comes from
+the freemium plan.
 
-- [ ] Multi-stage Dockerfile (Next.js standalone output) + `docker-compose` for local dev
-- [ ] Separate worker process for pg-boss jobs
+### Overpayment policy
+
+Manual payments stay capped at the balance. Online payments can't be capped: the money has already moved.
+
+- Make it rare: sessions are for the current balance, expire quickly, and are expired when the balance changes.
+- If it happens anyway, the webhook always records the payment. The invoice is paid and shows
+  "Overpaid by €X. Refund the difference in Stripe or remove the duplicate payment."
+- No automatic refunds: often the manual payment is the mistake, and the money is in the user's account.
+
+## Phase 5 — Payment reminders
+
+"Get paid faster" is the product's promise, so reminders come right after v1.0.
+
+- [ ] Daily Vercel Cron job that finds upcoming and overdue invoices (moves to pg-boss with the worker)
+- [ ] A sent-reminders table, so a reminder is never sent twice
+- [ ] Reminder rules per org (e.g. 3 days before, on due date, 7 days after)
+- [ ] Reminder email template + unsubscribe-safe footer
+- [ ] Reminder history on the invoice timeline
+
+**Done when** an overdue invoice sends its reminders on schedule, once each, and they show on the timeline.
+
+## Phase 6 — Docker + VPS + CI/CD · DevOps stage 2
+
+See [02-docker-vps](docs/devops/02-docker-vps.md). Production stays on Vercel + Neon; the VPS runs as a
+staging mirror. Move production only if the VPS is clearly better.
+
+- [x] Multi-stage Dockerfile (Next.js standalone output) + `docker-compose` for local dev
+- [ ] Separate worker process for pg-boss jobs; reminders move from Vercel Cron to pg-boss
 - [ ] VPS provisioning, reverse proxy with automatic TLS
 - [ ] GitHub Actions: build image → push to registry → deploy
 - [ ] Automated Postgres backups with a tested restore
 - [ ] Health check endpoint and uptime monitoring
 
-## Phase 6 — Payment reminders (1–2 weeks)
+**Done when** a merge to `main` deploys to the VPS with no manual steps, and a backup has been restored.
 
-- [ ] pg-boss setup: scheduled job that scans for upcoming and overdue invoices
-- [ ] Reminder rules per org (e.g. 3 days before, on due date, 7 days after)
-- [ ] Reminder email template + unsubscribe-safe footer
-- [ ] Reminder history on the invoice timeline
-
-## Phase 7 — Recurring invoices & estimates (2–3 weeks)
+## Phase 7 — Recurring invoices & estimates
 
 - [ ] Recurring schedules (weekly/monthly/yearly) that generate and optionally auto-send invoices
 - [ ] Estimates/quotes with accept/decline on a public link
 - [ ] Convert an accepted estimate into an invoice
 
-## Phase 8 — AWS + Terraform (3–4 weeks) · DevOps stage 3
+**Done when** a monthly retainer invoices itself, and an accepted estimate becomes an invoice in one click.
 
-See [03-aws-terraform](docs/devops/03-aws-terraform.md).
+## Phase 8 — Freemium billing
+
+- [ ] Freemium plans via Stripe Billing: limits on the free tier, customer portal, plan gating
+- [ ] EU VAT on subscriptions: Stripe Tax, or a merchant-of-record service
+
+**Done when** a user can upgrade, downgrade and cancel without help, with VAT charged correctly.
+
+## Phase 9 — AWS + Terraform · DevOps stage 3
+
+See [03-aws-terraform](docs/devops/03-aws-terraform.md). Runs as a mirror, like stage 2.
 
 - [ ] Terraform for networking, database, container service, secrets, DNS
 - [ ] Staging + production environments
 - [ ] CI runs `terraform plan` on PRs and `apply` on merge
 
-## Phase 9 — Custom templates & drag-and-drop editor (3–4 weeks)
+**Done when** `terraform apply` builds the whole environment from nothing.
 
-- [ ] Template gallery (2–3 layouts) + brand color and font settings
-- [ ] Drag-and-drop editor for invoice sections (header, items, totals, notes, footer)
-- [ ] Shared template model rendered by both the web view and the PDF renderer
-
-## Phase 10 — Teams, SMS & freemium billing (3–4 weeks)
+## Phase 10 — Teams, SMS & templates
 
 - [ ] Better Auth organizations: invites, roles (owner/admin/member), org switcher
 - [ ] Send invoice links by SMS (Twilio)
-- [ ] Freemium plans via Stripe Billing: limits on the free tier, customer portal, plan gating
+- [ ] Template gallery (2–3 layouts) + brand color and font settings, shared by the web view and the PDF
 
-## Phase 11 — Kubernetes & metrics (3–4 weeks) · DevOps stage 4
+**Done when** an owner can invite a member who invoices under the same business.
+
+## Phase 11 — Kubernetes & metrics · DevOps stage 4
 
 See [04-kubernetes](docs/devops/04-kubernetes.md).
 
@@ -176,10 +239,13 @@ See [04-kubernetes](docs/devops/04-kubernetes.md).
 - [ ] GitOps deploys with Argo CD
 - [ ] Prometheus + Grafana dashboards and alerts
 
+**Done when** a merge deploys through Argo CD and an alert fires on a forced failure.
+
 ---
 
 ## Backlog / ideas
 
+- Drag-and-drop template editor (the template gallery comes first, in Phase 10)
 - Expenses and profit view
 - Client portal (all invoices for a client)
 - CSV / accounting exports

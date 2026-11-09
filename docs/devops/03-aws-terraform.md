@@ -1,6 +1,6 @@
 # DevOps Stage 3 — AWS + Terraform
 
-**Roadmap phase:** 8 · **Standalone:** yes, needs the Docker image from stage 2 (or any container image)
+**Roadmap phase:** 9 · **Standalone:** yes, needs the Docker image from stage 2 (or any container image)
 
 ## Goal
 
