@@ -1,6 +1,6 @@
 # DevOps Stage 2 — Docker + VPS + CI/CD
 
-**Roadmap phase:** 5 · **Standalone:** yes, needs only the app running locally
+**Roadmap phase:** 6 · **Standalone:** yes, needs only the app running locally
 
 ## Goal
 
