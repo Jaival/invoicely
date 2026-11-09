@@ -188,6 +188,15 @@ const invoiceProbes: Record<keyof typeof invoices, Probe> = {
       await invoices.outstandingTotals(theirs.organizationId, TODAY),
     ).toEqual([{ currency: 'EUR', outstanding: 10000, overdue: 0 }])
   },
+  async paidThisMonth() {
+    // Mine has a payment this month; they have none.
+    expect(
+      await invoices.paidThisMonth(mine.organizationId, TODAY),
+    ).not.toEqual([])
+    expect(await invoices.paidThisMonth(theirs.organizationId, TODAY)).toEqual(
+      [],
+    )
+  },
   async getInvoice() {
     for (const id of [mine.draftId, mine.sentId, mine.paidId]) {
       expect(

@@ -122,8 +122,8 @@ Until v1.0, new style and polish ideas go to the backlog. Build the steps in thi
    - [ ] Verify the domain in Resend; set `RESEND_API_KEY` and `EMAIL_FROM` on Vercel (production + preview)
    - [ ] Check sign-up verification, password reset and the invoice email end to end in production
 2. **Dashboard** (no blockers, build it while the Stripe account is set up)
-   - [ ] Outstanding, overdue, paid this month, per currency
-   - [ ] Fix the flaky "search, filter and sort" E2E test (~36s against a 30s timeout)
+   - [x] Outstanding, overdue, paid this month, per currency
+   - [x] Fix the flaky "search, filter and sort" E2E test (~36s against a 30s timeout)
 3. **Payment model for Stripe** (expand-only migration)
    - [ ] `payment.source` (`manual` / `stripe`) and a unique Stripe payment intent ID
    - [ ] `stripe_event` table: each webhook event is handled once

@@ -22,6 +22,18 @@ export function today(timeZone = 'UTC', now = new Date()) {
 export const addDays = (isoDate: string, days: number) =>
   new Date(toDate(isoDate).getTime() + days * DAY_MS).toISOString().slice(0, 10)
 
+// The calendar month a date falls in, as the first day of it and the first
+// day of the next: from <= day < to.
+export function monthOf(isoDate: string) {
+  const [year, month] = isoDate.split('-').map(Number)
+  const first = (y: number, m: number) =>
+    `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-01`
+  return {
+    from: first(year, month),
+    to: month === 12 ? first(year + 1, 1) : first(year, month + 1),
+  }
+}
+
 // Whole days from one date to another; negative when `to` is earlier.
 export const daysBetween = (from: string, to: string) =>
   Math.round((toDate(to).getTime() - toDate(from).getTime()) / DAY_MS)
@@ -30,6 +42,14 @@ export const daysBetween = (from: string, to: string) =>
 export const formatDate = (isoDate: string, locale = 'en-US') =>
   new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(toDate(isoDate))
+
+// "October 2026": the month a date falls in.
+export const formatMonth = (isoDate: string, locale = 'en-US') =>
+  new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
     timeZone: 'UTC',
   }).format(toDate(isoDate))
 

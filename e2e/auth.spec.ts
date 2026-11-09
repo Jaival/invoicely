@@ -30,7 +30,9 @@ test('sign up, confirm the email, sign out, and sign back in', async ({
     page.getByRole('heading', { name: 'Welcome, Ada Lovelace' }),
   ).toBeVisible()
   // The personal organization is created and active on the first session.
-  await expect(page.getByText(`${email} · Ada Lovelace`)).toBeVisible()
+  await expect(
+    page.locator('[data-sidebar="header"]').getByText('Ada Lovelace'),
+  ).toBeVisible()
 
   await page.getByRole('button', { name: 'Account menu' }).click()
   await page.getByRole('menuitem', { name: 'Sign out' }).click()

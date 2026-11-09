@@ -15,7 +15,7 @@ import {
   type InvoiceStatus,
   type PartyDetails,
 } from '@/db/schema'
-import { addDays, daysBetween } from '@/lib/dates'
+import { addDays, daysBetween, monthOf } from '@/lib/dates'
 import type { SortDirection, SortKey } from '@/lib/invoices/list'
 import { formatInvoiceNumber } from '@/lib/invoices/number'
 import type { PaymentValues } from '@/lib/invoices/payments'
@@ -31,8 +31,10 @@ import {
   eq,
   exists,
   gt,
+  gte,
   ilike,
   inArray,
+  lt,
   ne,
   or,
   sql,
@@ -190,6 +192,30 @@ export async function outstandingTotals(organizationId: string, today: string) {
       and(
         eq(invoice.organizationId, organizationId),
         eq(invoice.status, 'sent'),
+      ),
+    )
+    .groupBy(invoice.currency)
+    .orderBy(asc(invoice.currency))
+}
+
+// What the business received in each currency this month: every payment,
+// part or full, that arrived from the 1st to today. Months are the
+// business's, like the days payments are recorded on.
+export async function paidThisMonth(organizationId: string, today: string) {
+  const { from, to } = monthOf(today)
+  return db
+    .select({
+      currency: invoice.currency,
+      // Sums of bigints come back as numeric strings.
+      paid: sql`sum(${payment.amount})`.mapWith(Number),
+    })
+    .from(payment)
+    .innerJoin(invoice, eq(invoice.id, payment.invoiceId))
+    .where(
+      and(
+        eq(invoice.organizationId, organizationId),
+        gte(payment.receivedOn, from),
+        lt(payment.receivedOn, to),
       ),
     )
     .groupBy(invoice.currency)

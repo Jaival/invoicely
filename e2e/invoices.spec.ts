@@ -1,6 +1,7 @@
 import { expect, randomAddress, signUp, test } from './fixtures'
 import type { Page } from '@playwright/test'
 import { linkFromEmail } from './outbox'
+import { businessOf, seedClient, seedInvoice } from './seed'
 
 async function addClient(page: Page, name: string) {
   await page.goto('/clients/new')
@@ -257,43 +258,18 @@ test('send an invoice, record payments, then void it', async ({ page }) => {
 })
 
 test('search, filter and sort the invoice list', async ({ page }) => {
-  await signUp(page)
-  await addClient(page, 'Ada Analytics')
-  await addClient(page, 'Babbage & Co')
-
-  async function createInvoice(
-    client: string,
-    unitPrice: string,
-    { dueDate, send }: { dueDate?: string; send?: boolean } = {},
-  ) {
-    await page.goto('/invoices/new')
-    await page.getByRole('combobox', { name: 'Client' }).click()
-    await page.getByRole('option', { name: client }).click()
-    await fillLine(page, 1, { description: 'Work', quantity: '1', unitPrice })
-    if (dueDate) {
-      await page.getByLabel('Issue date').fill('2026-01-01')
-      await page.getByLabel('Due date').fill(dueDate)
-    }
-    if (send) {
-      await page.getByRole('button', { name: 'Mark as sent' }).click()
-      await page
-        .getByRole('alertdialog')
-        .getByRole('button', { name: 'Mark as sent' })
-        .click()
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    } else {
-      await page.getByRole('button', { name: 'Save draft' }).click()
-      await expect(page).toHaveURL('/invoices')
-    }
-  }
-
-  // Due 30 days from today by default, so not overdue.
-  await createInvoice('Ada Analytics', '100', { send: true })
-  await createInvoice('Babbage & Co', '300', {
+  // The list is what's tested here, so the invoices are seeded rather than
+  // entered through the form.
+  const business = await businessOf(await signUp(page))
+  const ada = await seedClient(business, 'Ada Analytics')
+  const babbage = await seedClient(business, 'Babbage & Co')
+  // Due 30 days from today, so not overdue.
+  await seedInvoice(business, ada, 10000)
+  await seedInvoice(business, babbage, 30000, {
+    issueDate: '2026-01-01',
     dueDate: '2026-01-31',
-    send: true,
   })
-  await createInvoice('Babbage & Co', '200')
+  await seedInvoice(business, babbage, 20000, { draft: true })
 
   await page.goto('/invoices')
   const rows = page.getByRole('row').filter({ has: page.getByRole('cell') })

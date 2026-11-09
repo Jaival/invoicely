@@ -1,5 +1,6 @@
 import { PageTitle } from '@/components/app/page-title'
 import { InvoiceCards } from '@/components/invoices/invoice-cards'
+import { MoneyStat } from '@/components/invoices/money-stat'
 import { InvoiceRowMenu } from '@/components/invoices/invoice-row-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status'
 import { Button } from '@/components/ui/button'
@@ -405,55 +406,26 @@ function OwedTotals({
 }: {
   owed: Awaited<ReturnType<typeof outstandingTotals>>
 }) {
-  const overdue = owed.filter((row) => row.overdue > 0)
-  const amounts = (rows: typeof owed, key: 'outstanding' | 'overdue') =>
-    rows.map((row) => (
-      <span key={row.currency} className="block">
-        {formatMoney(row[key], row.currency)}
-      </span>
-    ))
-
   return (
     <dl className="grid grid-cols-2 gap-3 sm:max-w-md">
-      <div className="panel p-4">
-        <dt className={statLabel}>Outstanding</dt>
-        <dd className="mt-1 font-figures text-xl font-semibold tabular-nums">
-          {amounts(owed, 'outstanding')}
-        </dd>
-      </div>
-      <div
-        className={cn(
-          'panel p-4',
-          // Brutal fills the box with the overdue color instead, and Loud
-          // tilts it.
-          overdue.length > 0 &&
-            'brutal:bg-status-overdue brutal:text-status-foreground loud:rotate-[1.5deg]',
-        )}
-      >
-        <dt
-          className={cn(
-            statLabel,
-            overdue.length > 0 && 'brutal:text-status-foreground',
-          )}
-        >
-          Overdue
-        </dt>
-        <dd
-          className={cn(
-            'mt-1 font-figures text-xl font-semibold tabular-nums',
-            overdue.length > 0 &&
-              'text-destructive brutal:text-status-foreground',
-          )}
-        >
-          {overdue.length > 0 ? amounts(overdue, 'overdue') : 'Nothing'}
-        </dd>
-      </div>
+      <MoneyStat
+        title="Outstanding"
+        amounts={owed.map((row) => ({
+          currency: row.currency,
+          amount: row.outstanding,
+        }))}
+      />
+      <MoneyStat
+        title="Overdue"
+        tone="overdue"
+        amounts={owed.map((row) => ({
+          currency: row.currency,
+          amount: row.overdue,
+        }))}
+      />
     </dl>
   )
 }
-
-const statLabel =
-  'text-sm text-muted-foreground brutal:text-xs brutal:font-semibold brutal:tracking-wider brutal:uppercase'
 
 function ViewLink({
   options,
