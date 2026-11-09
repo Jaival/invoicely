@@ -14,7 +14,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
+  // Locally, half the CPUs (14 on a 28-thread machine) overload one dev
+  // server and the remote Neon dev branch, and unrelated tests time out.
+  workers: isCI ? 1 : 4,
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: `http://localhost:${PORT}`,

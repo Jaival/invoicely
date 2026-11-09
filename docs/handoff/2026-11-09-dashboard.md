@@ -20,6 +20,9 @@
   queries. Run time alone: ~21–27s → ~12s; 6 parallel copies all pass in ≤18s.
   `playwright.config.ts` loads `.env.local` so the seeding uses the server's database (CI sets
   `DATABASE_URL` directly).
+- Local E2E runs use 4 workers (`playwright.config.ts`): the default, half the CPUs (14 here),
+  overloaded the dev server and the remote Neon dev branch, and unrelated tests timed out. CI uses
+  one worker.
 
 ## Next
 
@@ -28,9 +31,5 @@
 
 ## Open decisions
 
-- Locally, the full E2E suite with the default worker count (half the CPUs, 14 here) against the
-  remote Neon dev branch fails a different, unrelated test on most runs (timeouts under load). With
-  `--workers=4` all 30 pass. CI uses one worker and is not affected. Options: cap local workers in
-  `playwright.config.ts`, or leave it. Not changed in this PR.
 - The dashboard heading is still the placeholder "Welcome, name / Signed in as email". Kept because
   the auth E2E checks it.
