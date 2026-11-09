@@ -23,6 +23,8 @@
 - Local E2E runs use 4 workers (`playwright.config.ts`): the default, half the CPUs (14 here),
   overloaded the dev server and the remote Neon dev branch, and unrelated tests timed out. CI uses
   one worker.
+- Dashboard subtitle: the business name and the month ("Lovelace Analytics · November 2026"),
+  instead of the placeholder "Signed in as email". The auth E2E checks the business in the sidebar.
 
 ## Next
 
@@ -31,5 +33,4 @@
 
 ## Open decisions
 
-- The dashboard heading is still the placeholder "Welcome, name / Signed in as email". Kept because
-  the auth E2E checks it.
+None.

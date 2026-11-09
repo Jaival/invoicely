@@ -5,6 +5,7 @@ import {
   daysBetween,
   formatDate,
   formatDateTime,
+  formatMonth,
   formatShortDate,
   isTimeZone,
   monthOf,
@@ -78,6 +79,11 @@ describe('dates', () => {
       from: '2026-12-01',
       to: '2027-01-01',
     })
+  })
+
+  it('names the month a date falls in', () => {
+    expect(formatMonth('2026-10-01')).toBe('October 2026')
+    expect(formatMonth('2026-12-31')).toBe('December 2026')
   })
 
   it('recognises IANA time zones', () => {

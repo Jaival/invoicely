@@ -45,6 +45,14 @@ export const formatDate = (isoDate: string, locale = 'en-US') =>
     timeZone: 'UTC',
   }).format(toDate(isoDate))
 
+// "October 2026": the month a date falls in.
+export const formatMonth = (isoDate: string, locale = 'en-US') =>
+  new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(toDate(isoDate))
+
 // "Oct 1" in the current year, "Oct 1, 2025" in any other.
 export const formatShortDate = (
   isoDate: string,

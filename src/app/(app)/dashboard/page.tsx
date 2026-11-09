@@ -16,6 +16,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
+import { formatMonth } from '@/lib/dates'
 import { listHref, parseListOptions, type ListView } from '@/lib/invoices/list'
 import {
   countInvoicesByStatus,
@@ -56,9 +57,10 @@ export default async function DashboardPage() {
     <>
       <div className="flex flex-col gap-1">
         <PageTitle>Welcome, {user.name}</PageTitle>
+        {/* The business, and the month "Paid this month" is about. */}
         <p className="text-muted-foreground">
-          Signed in as {user.email}
-          {activeOrganization && <> · {activeOrganization.name}</>}
+          {activeOrganization && <>{activeOrganization.name} · </>}
+          {formatMonth(today)}
         </p>
       </div>
       {!profile && (
