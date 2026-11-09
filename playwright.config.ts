@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'node:fs'
 import { outboxDir } from './e2e/outbox'
+
+// Tests seed data through the app's queries (e2e/seed.ts), so they need the
+// same database as the server. CI sets the variables directly instead.
+if (existsSync('.env.local')) process.loadEnvFile('.env.local')
 
 const PORT = 3000
 const isCI = !!process.env.CI
